@@ -67,6 +67,11 @@ function ask_permission () {
 function convert_to_seconds() {
     local time=$1
 
+    local days=0
+    local hours=0
+    local minutes=0
+    local seconds=0
+
     # Check if the format includes days, hours, minutes, and seconds (d-hh:mm:ss)
     if [[ $time == *-*:*:* ]]; then
         # Extract time components with days
@@ -77,17 +82,26 @@ function convert_to_seconds() {
     # Check if the format includes hours, minutes, and seconds (hh:mm:ss)
     elif [[ $time == *:*:* ]]; then
         # Extract time components without days
-        local days=0
         local hours=$(echo "$time" | awk -F ':' '{print $1}')
         local minutes=$(echo "$time" | awk -F ':' '{print $2}')
         local seconds=$(echo "$time" | awk -F ':' '{print $3}')
     # Check if the format includes minutes and seconds (mm:ss)
     elif [[ $time == *:* ]]; then
         # Extract time components without days and hours
-        local days=0
-	local hours=0
         local minutes=$(echo "$time" | awk -F ':' '{print $1}')
         local seconds=$(echo "$time" | awk -F ':' '{print $2}')
+    # Check if the time contains days (d)
+    elif [[ $time =~ ^[0-9]+(d|day|days)$ ]]; then
+        local days=$(echo "$time" | sed 's/[days]//g')
+    # Check if the time contains hours (h)
+    elif [[ $time =~ ^[0-9]+(h|hour|hours)$ ]]; then
+        local hours=$(echo "$time" | sed 's/[hours]//g')
+    # Check if the time contains minutes (m or min)
+    elif [[ $time =~ ^[0-9]+(m|min|minute|minutes)$ ]]; then
+        local minutes=$(echo "$time" | sed 's/[minutes]//g')
+    # Check if the time contains seconds (s)
+    elif [[ $time =~ ^[0-9]+(s|sec|second|secondes)$ ]]; then
+        local seconds=$(echo "$time" | sed 's/[secondes]//g')
     # Handle other formats or seconds-only case
     else
         ((total_seconds = time))
@@ -103,7 +117,6 @@ function convert_to_seconds() {
 
     # Calculating the total seconds
     total_seconds=$((days * 24 * 60 * 60 + hours * 60 * 60 + minutes * 60 + seconds))
-
     echo "$total_seconds"
 }
 
