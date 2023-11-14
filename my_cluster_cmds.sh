@@ -41,8 +41,8 @@ alias mosh_kill='kill "pidof mosh-server"'
 alias srj='squeue -u $USER -t RUNNING'
 
 
-function update_my_cmds() {
-    curl https://raw.githubusercontent.com/jacr13/tuto_docker_local_cluster/main/my_cluster_cmds.sh > $HOME/my_commands/my_cmds.sh
+function update_me() {
+    curl https://raw.githubusercontent.com/jacr13/tuto_docker_local_cluster/main/my_cluster_cmds.sh > test.sh
     source $HOME/.bashrc
 }
 
@@ -123,7 +123,7 @@ function convert_to_seconds() {
 function get_jobs_with_time() {
     local output="$1"
     local time=$(convert_to_seconds "$2")
-    local time_remaining="$3" # should be "0" or "1"
+    local time_remaining="$3" # should be 0 or 1
 
     echo "$output" | while IFS= read -r line; do
         # Extract relevant columns
@@ -135,13 +135,13 @@ function get_jobs_with_time() {
         job_remaining_seconds=$(convert_to_seconds "$job_remaining")
 
         # Check conditions and perform actions
-        if [ "$job_state" == "R" ]; then
-            if [ $time_remaining -eq 0 ]; then
-                if [ "$job_duration_seconds" -gt "$time" ]; then
+        if [[ "$job_state" == "R" ]]; then
+            if [[ "$time_remaining" -eq "0" ]]; then
+                if [[ "$job_duration_seconds" -gt "$time" ]]; then
                     echo "$line"
                 fi
             else
-                if [ "$job_remaining_seconds" -gt "$time" ]; then
+                if [[ "$job_remaining_seconds" -gt "$time" ]]; then
                     echo "$line"
                 fi
             fi
