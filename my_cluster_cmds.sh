@@ -40,6 +40,12 @@ alias mosh_kill='kill "pidof mosh-server"'
 
 alias srj='squeue -u $USER -t RUNNING'
 
+
+function update_me() {
+    curl https://raw.githubusercontent.com/jacr13/tuto_docker_local_cluster/main/my_cluster_cmds.sh > test.sh
+    source $HOME/.bashrc
+}
+
 # squeue running count
 function src() {
     N_JOBS_TOTAL=$(_squeue_helper | grep -E -c "$USER" )
