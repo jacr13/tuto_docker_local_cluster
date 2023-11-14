@@ -146,8 +146,7 @@ function my_scancel() {
     then
         echo "No arguments supplied, this command will cancel ALL your jobs!"
         n_total=$(_squeue_helper | grep -E -c "$USER" )
-        n_jobs="$n_total"
-        ask_permission
+        ask_permission "$n_total" "$n_total"
         if [[ $REPLY =~ ^[Yy]$ ]]
         then
             scancel -u $USER
