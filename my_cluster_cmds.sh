@@ -41,8 +41,8 @@ alias mosh_kill='kill "pidof mosh-server"'
 alias srj='squeue -u $USER -t RUNNING'
 
 
-function update_me() {
-    curl https://raw.githubusercontent.com/jacr13/tuto_docker_local_cluster/main/my_cluster_cmds.sh > test.sh
+function update_my_cmds() {
+    curl https://raw.githubusercontent.com/jacr13/tuto_docker_local_cluster/main/my_cluster_cmds.sh > $HOME/my_commands/my_cmds.sh
     source $HOME/.bashrc
 }
 
