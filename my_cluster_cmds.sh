@@ -286,8 +286,28 @@ function my_scancel() {
         echo "Canceling jobs..."
         echo "$jobs_to_cancel" |  awk '{print $1}' | xargs scancel
         echo "Waiting a bit for jobs to cancel..."
-        sleep 5
-        n_total=$(_squeue_helper | grep -E -c "$USER" )
-        echo "Number of jobs after cancel: $n_total"
+        
+        # Set the start time
+        start_time=$(date +%s)
+        # Define the maximum wait time in seconds (e.g., 10 seconds)  
+        max_wait_time=10
+        n_jobs=$(_squeue_helper | grep -E -c "$USER")
+        while [[ $n_total -ne $n_jobs ]]; do
+            current_time=$(date +%s)
+            elapsed_time=$((current_time - start_time))
+             
+            if [ $elapsed_time -ge $max_wait_time ]; then
+                echo "Timeout reached..."
+                break
+            fi
+             
+            # Update the number of total jobs
+            n_jobs=$(_squeue_helper | grep -E -c "$USER")
+             
+            # Sleep for a short duration before checking again
+            sleep 1
+        done
+        n_jobs=$(_squeue_helper | grep -E -c "$USER" )
+        echo "Number of jobs after cancel: $n_jobs"
     fi
 }
