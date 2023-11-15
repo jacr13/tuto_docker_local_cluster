@@ -258,6 +258,7 @@ function my_scancel() {
 
     n_total=$(_squeue_helper | grep -wc "$USER")
     n_jobs_to_cancel=$(echo "$jobs_to_cancel" | grep -wc "$USER")
+    n_jobs_to_keep=$((n_total - n_jobs_to_cancel))
 
     if [ $dryrun -eq 1 ]
     then
@@ -275,7 +276,7 @@ function my_scancel() {
         else
             _squeue_helper | grep -E "$pattern"
         fi
-        echo "[DRYRUN] Number of jobs after cancel: $((n_total - n_jobs_to_cancel))/$n_total"
+        echo "[DRYRUN] Number of jobs after cancel: $n_jobs_to_keep/$n_total"
     fi
     echo ""
 
@@ -292,7 +293,7 @@ function my_scancel() {
         # Define the maximum wait time in seconds (e.g., 10 seconds)  
         max_wait_time=10
         n_jobs=$(_squeue_helper | grep -E -c "$USER")
-        while [[ $n_total -ne $n_jobs ]]; do
+        while [[ $n_jobs_to_keep -ne $n_jobs ]]; do
             current_time=$(date +%s)
             elapsed_time=$((current_time - start_time))
              
