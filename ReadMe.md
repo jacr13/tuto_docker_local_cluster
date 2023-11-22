@@ -194,22 +194,43 @@ scancel <job_id>
 
 I provided my own custom commands for the cluster, the most useful command is:
 ```bash
-my_scancel -h
-# OUTPUT:
-# Usage: my_scancel_invert [option...]
-#    -h, --help             Show this help message
-#    -p, --pattern [text]   pattern to match on grep (will cancel all jobs that match this pattern)
-#    -i, --invert           invert the pattern, so now this command will KEEP jobs that match the pattern
-#    -nd, --no_dryrun       Doesn't show jobs in dry run mode (dangerous)
-# 
-# This command will cancel all the jobs of USER that match pattern if neither -i or --invert are specified, and cancel all jobs that DO NOT match the pattern if -i or --invert are specified!
+Usage: my_scancel [option...]
+   -h, --help             Show this help message
+   -p, --pattern [text]   Pattern to match using grep (cancels all jobs that match this pattern)
+   -ip, --inverse_pattern Invert the pattern, so now the command will KEEP jobs that match the pattern
+   -t, --time [time]      Stop jobs with execution time greater than this value (d-hh:mm:ss, hh:mm:ss, mm:ss, s or #d, #h, #m)
+   -it, --inverse_time    Stop jobs with remaining time greater than the time passed with --time
+   -nd, --no_dryrun       Don't show jobs in dry run mode (dangerous)
+
+Description:
+   This fundtion provides a flexible way to cancel jobs on a cluster based on different criteria.
+   Use the options to specify patterns, time limits, and dry run behavior.
+
+Examples:
+   1. Cancel all jobs that contain the pattern 'experiment':
+      my_scancel -p experiment
+
+   2. Cancel all jobs that DON'T contain the pattern 'experiment':
+      my_scancel -p experiment -ip
+
+   3. Cancel jobs with execution time exceeding 1 hour:
+      my_scancel -t 01:00:00
+      my_scancel -t 1h
+
+   4. Cancel jobs with remaining time exceeding than 2 days:
+      my_scancel -t 2-00:00:00 -it
+      my_scancel -t 2d -it
+
+   5. Cancel all jobs:
+      5.1 with a dry run preview:
+          my_scancel
+      5.2 without displaying a dry run preview:
+          my_scancel -nd
+
+   6. It is possible to cancel jobs with pattern and time constrain:
+      my_scancel -p pattern -t 2d
+      my_scancel -p pattern -ip -t 2d -it
 ```
-
-- `my_scancel` : cancel all my jobs
-
-- `my_scancel -p <pattern>`: this command will cancel all jobs that match the pattern
-
-- `my_scancel -i -p <pattern>` : this command will cancel all jobs that DO NOT match the pattern
   
 But you have also:
 
