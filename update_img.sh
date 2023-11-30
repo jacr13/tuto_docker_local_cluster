@@ -154,7 +154,7 @@ if [ -n "$DOCKER_REGISTRY" ]; then
     check_mv_old
     pull_image
 else
-    echo "If you are trying to pull an image don't forget to specify a docker registry.
+    echo "If you are trying to pull an image don't forget to specify a docker registry."
 fi
 
 
