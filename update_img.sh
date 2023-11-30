@@ -35,7 +35,7 @@ function usage() {
     echo "  -n  name                specify the name of the image (to be saved), eg. milozero.sif"
     echo "  -o  old_folder          specify the name of the folder where to save old images"
     echo "  -t  tmp_folder          specify the name of the tmp folder (used by apptainer)"
-    echo "  -u  update              update the currect scrip"
+    echo "  -u  update              update the current script"
 }
 
 function connect() {
@@ -128,7 +128,7 @@ while [[ "$#" -gt 0 ]]; do
             TMP_FOLDER_NAME="$2"
             shift 2
             ;;
-        -u|--update)
+        -u|--aaaaaaa)
             UPDATE_SCRIPT=true
             shift 2
             ;;
@@ -141,8 +141,8 @@ done
 
 IMG_PATH=$SCRIPT_PATH/"$IMG_NAME".sif
 
-if [ "$UPDATE_SCRIPT" == true ]; then
-    update_from_github
+if [ "$UPDATE_SCRIPT" = true ]; then
+    echo "updating"
 fi
 
 if [ "$CONNECTION" = true ]; then
