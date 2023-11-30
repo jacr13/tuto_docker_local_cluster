@@ -81,7 +81,7 @@ function pull_image() {
     fi
 }
 
-function update() {
+function update_from_github() {
     curl https://raw.githubusercontent.com/jacr13/tuto_docker_local_cluster/main/update_img.sh > $SCRIPT_PATH/update_img.sh
 }
 
@@ -142,7 +142,7 @@ done
 IMG_PATH=$SCRIPT_PATH/"$IMG_NAME".sif
 
 if [ "$UPDATE_SCRIPT" == true ]; then
-    update
+    update_from_github
 fi
 
 if [ "$CONNECTION" = true ]; then
