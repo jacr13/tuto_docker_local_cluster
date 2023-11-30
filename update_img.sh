@@ -22,6 +22,7 @@ OLD_FOLDER_NAME=old
 TMP_FOLDER_NAME=tmp
 
 CONNECTION=false
+UPDATE_SCRIPT=false
 
 function usage() {
     echo "usage: $programname [-vhc] [-du docker_username] [-dp docker_password] [-dr docker_registry] [-n name] [-o old_folder]"
@@ -128,7 +129,7 @@ while [[ "$#" -gt 0 ]]; do
             shift 2
             ;;
         -u|--update)
-            update
+            UPDATE_SCRIPT=true
             shift 2
             ;;
         *)
@@ -139,6 +140,10 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 IMG_PATH=$SCRIPT_PATH/"$IMG_NAME".sif
+
+if [ "$UPDATE_SCRIPT" == true ]; then
+    update
+fi
 
 if [ "$CONNECTION" = true ]; then
     connect
