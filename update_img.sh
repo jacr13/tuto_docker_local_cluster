@@ -11,7 +11,7 @@ SCRIPT_PATH="$(dirname "$0")"
 # docker
 DOCKER_USERNAME="candidj0"
 DOCKER_PASSWORD=""
-DOCKER=""
+DOCKER_REGISTRY=""
 
 # image name will be IMG_NAME.sif
 IMG_NAME=image
@@ -26,16 +26,16 @@ UPDATE_SCRIPT=false
 
 function usage() {
     echo "usage: $programname [-vhc] [-du docker_username] [-dp docker_password] [-dr docker_registry] [-n name] [-o old_folder]"
-    echo "  -v                      version"
-    echo "  -h                      display help"
-    echo "  -c                      connect to docker"
+    echo "  -v  version             version"
+    echo "  -h  help                display help"
+    echo "  -u  update              update the current script"
+    echo "  -c  connect             connect to docker"
     echo "  -du docker_username     specify the docker username (neeeds c parameter to connect to docker)"
     echo "  -dp docker_password     specify the docker password (neeeds c parameter to connect to docker)"
     echo "  -dr docker_registry     specify the docker registry, eg. candidj0/milozero:latest"
     echo "  -n  name                specify the name of the image (to be saved), eg. milozero.sif"
     echo "  -o  old_folder          specify the name of the folder where to save old images"
     echo "  -t  tmp_folder          specify the name of the tmp folder (used by apptainer)"
-    echo "  -u  update              update the current script"
 }
 
 function connect() {
@@ -74,7 +74,7 @@ function pull_image() {
     if [ ! -f "$IMG_PATH" ]; then
         TMP_FOLDER="$(pwd)"/$TMP_FOLDER_NAME
         check_tmp_folder
-	    export APPTAINER_TMPDIR=$TMP_FOLDER
+	export APPTAINER_TMPDIR=$TMP_FOLDER
         apptainer build --fakeroot $IMG_PATH docker://$DOCKER_REGISTRY
     else
         echo "[ERROR] you must remove/move $IMG_PATH before pulling a new image."
@@ -99,6 +99,10 @@ while [[ "$#" -gt 0 ]]; do
         -h|--help)
             usage
             exit 0;
+            ;;
+        -u|--update)
+            UPDATE_SCRIPT=true
+            shift
             ;;
         -c|--connect)
             CONNECTION=true
@@ -128,10 +132,6 @@ while [[ "$#" -gt 0 ]]; do
             TMP_FOLDER_NAME="$2"
             shift 2
             ;;
-        -u|--aaaaaaa)
-            UPDATE_SCRIPT=true
-            shift 2
-            ;;
         *)
             echo "Unknown error while processing options"
             exit 0
@@ -142,12 +142,19 @@ done
 IMG_PATH=$SCRIPT_PATH/"$IMG_NAME".sif
 
 if [ "$UPDATE_SCRIPT" = true ]; then
-    echo "updating"
+    echo "Updating script..."
+    update_from_github
 fi
 
 if [ "$CONNECTION" = true ]; then
     connect
 fi
 
-check_mv_old
-pull_image
+if [ -n "$DOCKER_REGISTRY" ]; then
+    check_mv_old
+    pull_image
+else;
+    echo "If you are trying to pull an image don't forget to specify a docker registry.
+fi
+
+
