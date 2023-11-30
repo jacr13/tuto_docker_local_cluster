@@ -4,7 +4,9 @@
 #
 #==============================================================================
 
-VERSION="1.0.0"
+VERSION="1.0.1"
+
+SCRIPT_PATH="$(dirname "$0")"
 
 # docker
 DOCKER_USERNAME="candidj0"
@@ -16,6 +18,8 @@ IMG_NAME=image
 
 # name of the folder where to save old images
 OLD_FOLDER_NAME=old
+# name of the tmp folder for apptainer
+TMP_FOLDER_NAME=tmp
 
 CONNECTION=false
 
@@ -29,11 +33,13 @@ function usage() {
     echo "  -dr docker_registry     specify the docker registry, eg. candidj0/milozero:latest"
     echo "  -n  name                specify the name of the image (to be saved), eg. milozero.sif"
     echo "  -o  old_folder          specify the name of the folder where to save old images"
+    echo "  -t  tmp_folder          specify the name of the tmp folder (used by apptainer)"
+    echo "  -u  update              update the currect scrip"
 }
 
 function connect() {
-    export SINGULARITY_DOCKER_USERNAME=$DOCKER_USERNAME
-    export SINGULARITY_DOCKER_PASSWORD=$DOCKER_PASSWORD
+    export APPTAINER_DOCKER_USERNAME=$DOCKER_USERNAME
+    export APPTAINER_DOCKER_PASSWORD=$DOCKER_PASSWORD
 }
 
 
@@ -55,16 +61,28 @@ function check_mv_old() {
 }
 
 
+function check_tmp_folder() {
+   if [ ! -d "$TMP_FOLDER" ]; then
+        echo "[INFO] tmp $TMP_FOLDER doesn't exit.."
+        mkdir $TMP_FOLDER
+    	echo "[INFO] folder $TMP_FOLDER created!"
+    fi
+}
+
 function pull_image() {
     if [ ! -f "$IMG_PATH" ]; then
-        singularity build $IMG_PATH docker://$DOCKER_REGISTRY
-        #srun -C gpu singularity pull docker://candidj0/pytorch:cscs
-        #srun -p debug -C gpu --time=00:05:00 singularity exec --nv ~/docker/pytorch_cscs.sif /opt/conda/bin/python -c 'import torch; print(torch.__version__); print("cuda = ", torch.cuda.is_available())'
+        TMP_FOLDER="$(pwd)"/$TMP_FOLDER_NAME
+        check_tmp_folder
+	    export APPTAINER_TMPDIR=$TMP_FOLDER
+        apptainer build --fakeroot $IMG_PATH docker://$DOCKER_REGISTRY
     else
         echo "[ERROR] you must remove/move $IMG_PATH before pulling a new image."
     fi
 }
 
+function update() {
+    curl https://raw.githubusercontent.com/jacr13/tuto_docker_local_cluster/main/update_img.sh > $SCRIPT_PATH/update_img.sh
+}
 
 if [ $# == 0 ] ; then
     usage
@@ -105,6 +123,14 @@ while [[ "$#" -gt 0 ]]; do
             OLD_FOLDER_NAME="$2"
             shift 2
             ;;
+        -t|--tmp_folder)
+            TMP_FOLDER_NAME="$2"
+            shift 2
+            ;;
+        -u|--update)
+            update
+            shift 2
+            ;;
         *)
             echo "Unknown error while processing options"
             exit 0
@@ -112,7 +138,6 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
-SCRIPT_PATH="$(dirname "$0")"
 IMG_PATH=$SCRIPT_PATH/"$IMG_NAME".sif
 
 if [ "$CONNECTION" = true ]; then
