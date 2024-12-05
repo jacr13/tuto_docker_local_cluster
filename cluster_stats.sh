@@ -44,11 +44,11 @@ do
         echo "Year: $year"
         if [[ -n "$CPU_OUTPUT" ]]; then
             echo "CPU Usage:"
-            echo "$CPU_OUTPUT"
+            echo "$CPU_OUTPUT" | awk -F'|' 'NR > 1 {printf "- User: %s (%s) used %s CPU hours\n", $3, $4, $5}'
         fi
         if [[ -n "$GPU_OUTPUT" ]]; then
             echo "GPU Usage:"
-            echo "$GPU_OUTPUT"
+            echo "$GPU_OUTPUT" | awk -F'|' 'NR > 1 {printf "- User: %s (%s) used %s GPU hours\n", $3, $4, $6}'
         fi
         echo "--------------------------------"
     fi
