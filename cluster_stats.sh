@@ -71,7 +71,6 @@ do
         if [[ -n "$CPU_OUTPUT" ]]; then
             echo "$CPU_OUTPUT" | awk -F'|' -v yr=$year 'NR==1 {print "(" $1 ") CPU usage in " yr " = " $5 " hours"}'
         fi
-        echo ""
         if [[ -n "$GPU_OUTPUT" ]]; then
             echo "$GPU_OUTPUT" | awk -F'|' -v yr=$year 'NR==1 {print "(" $1 ") GPU usage in " yr " = " $6 " hours"}'
         fi
