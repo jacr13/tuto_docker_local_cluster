@@ -46,12 +46,20 @@ do
         echo "Year: $year"
         if [[ -n "$CPU_OUTPUT" ]]; then
             echo "CPU Usage:"
-            echo "$CPU_OUTPUT" | awk -F'|' 'NR > 1 {print "(" $1 ") User: " $3 " (" $4 ") used " $5 " CPU hours"}'
+            if [[ $(echo "$CPU_OUTPUT" | wc -l) -gt 1 ]]; then
+                echo "$CPU_OUTPUT" | awk -F'|' 'NR > 1 {print "(" $1 ") User: " $3 " (" $4 ") used " $5 " CPU hours"}'
+            else
+                echo "$CPU_OUTPUT" | awk -F'|' '{print "(" $1 ") User: " $3 " (" $4 ") used " $5 " CPU hours"}'
+            fi
         fi
         echo ""
         if [[ -n "$GPU_OUTPUT" ]]; then
             echo "GPU Usage:"
-            echo "$GPU_OUTPUT" | awk -F'|' 'NR > 1 {print "(" $1 ") User: " $3 " (" $4 ") used " $6 " GPU hours"}'
+            if [[ $(echo "$CPU_OUTPUT" | wc -l) -gt 1 ]]; then
+                echo "$GPU_OUTPUT" | awk -F'|' 'NR > 1 {print "(" $1 ") User: " $3 " (" $4 ") used " $6 " GPU hours"}'
+            else
+                echo "$GPU_OUTPUT" | awk -F'|' '{print "(" $1 ") User: " $3 " (" $4 ") used " $6 " GPU hours"}'
+            fi
         fi
         echo ""
     fi
