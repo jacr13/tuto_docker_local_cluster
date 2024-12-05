@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 # Parse input arguments
 START_YEAR="2019"
 END_YEAR="2024"
@@ -29,32 +30,52 @@ echo "--------------------------------"
 echo "DETAILED: CPU and GPU usage per year"
 for year in $(seq "$START_YEAR" "$END_YEAR")
 do
-    echo "Year: $year"
     if [[ -n "$USER" ]]; then
         FILTER="user=$USER"
     else
         FILTER=""
     fi
-    echo "CPU Usage:"
-    sreport cluster AccountUtilizationByUser account=$ACCOUNT $FILTER start=${year}-01-01 end=${year}-12-31 -t hours -nP
-    echo "GPU Usage:"
-    sreport cluster AccountUtilizationByUser account=$ACCOUNT $FILTER start=${year}-01-01 end=${year}-12-31 -t hours --tres="gres/gpu" -nP
-    echo "--------------------------------"
+
+    CPU_OUTPUT=$(sreport cluster AccountUtilizationByUser account=$ACCOUNT $FILTER start=${year}-01-01 end=${year}-12-31 -t hours -nP)
+    GPU_OUTPUT=$(sreport cluster AccountUtilizationByUser account=$ACCOUNT $FILTER start=${year}-01-01 end=${year}-12-31 -t hours --tres="gres/gpu" -nP)
+
+    # Check if there is output to display
+    if [[ -n "$CPU_OUTPUT" || -n "$GPU_OUTPUT" ]]; then
+        echo "Year: $year"
+        if [[ -n "$CPU_OUTPUT" ]]; then
+            echo "CPU Usage:"
+            echo "$CPU_OUTPUT"
+        fi
+        if [[ -n "$GPU_OUTPUT" ]]; then
+            echo "GPU Usage:"
+            echo "$GPU_OUTPUT"
+        fi
+        echo "--------------------------------"
+    fi
 done
 
 # Output summary usage
 echo -e "\n\nSUMMARY: CPU and GPU usage per year"
 for year in $(seq "$START_YEAR" "$END_YEAR")
 do
-    echo "Year: $year"
     if [[ -n "$USER" ]]; then
         FILTER="user=$USER"
     else
         FILTER=""
     fi
-    sreport cluster AccountUtilizationByUser account=$ACCOUNT $FILTER start=${year}-01-01 end=${year}-12-31 -t hours -nP | \
-    awk -F'|' -v yr=$year 'NR==1 {print "(" $1 ") CPU usage in " yr " = " $5 " hours"}'
-    sreport cluster AccountUtilizationByUser account=$ACCOUNT $FILTER start=${year}-01-01 end=${year}-12-31 -t hours --tres="gres/gpu" -nP | \
-    awk -F'|' -v yr=$year 'NR==1 {print "(" $1 ") GPU usage in " yr " = " $6 " hours"}'
-    echo "--------------------------------"
+
+    CPU_OUTPUT=$(sreport cluster AccountUtilizationByUser account=$ACCOUNT $FILTER start=${year}-01-01 end=${year}-12-31 -t hours -nP)
+    GPU_OUTPUT=$(sreport cluster AccountUtilizationByUser account=$ACCOUNT $FILTER start=${year}-01-01 end=${year}-12-31 -t hours --tres="gres/gpu" -nP)
+
+    # Check if there is output to display
+    if [[ -n "$CPU_OUTPUT" || -n "$GPU_OUTPUT" ]]; then
+        echo "Year: $year"
+        if [[ -n "$CPU_OUTPUT" ]]; then
+            echo "$CPU_OUTPUT" | awk -F'|' -v yr=$year 'NR==1 {print "(" $1 ") CPU usage in " yr " = " $5 " hours"}'
+        fi
+        if [[ -n "$GPU_OUTPUT" ]]; then
+            echo "$GPU_OUTPUT" | awk -F'|' -v yr=$year 'NR==1 {print "(" $1 ") GPU usage in " yr " = " $6 " hours"}'
+        fi
+        echo "--------------------------------"
+    fi
 done
