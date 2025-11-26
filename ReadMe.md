@@ -75,20 +75,8 @@ rsync -rvaP update_img.sh <your_cluster_username>@login1.yggdrasil.hpc.unige.ch:
 rsync -rvaP update_img.sh <your_cluster_username>@login2.baobab.hpc.unige.ch:~/docker/.
 ```
 
-Now you are ready to import your docker images on the cluster using singularity.
-Since we use singularity, we need to load it, you can do it manually each time you use singularity or you can load it by default by adding it to your .bashrc file:
-
-```bash
-# CLUSTER
-# load manually
-module load GCCcore/8.2.0 Singularity/3.4.0-Go-1.12
-
-# set it to your .bashrc file
-echo "module load GCCcore/8.2.0 Singularity/3.4.0-Go-1.12" > $HOME/.bashrc
-source $HOME/.bashrc
-```
-
-Now that you have loaded singularity we can use the script to import your images from docker hub:
+Now you are ready to import your docker images on the cluster using apptainer.
+We can use the script to import your images from docker hub:
 
 ```bash
 # CLUSTER
@@ -145,10 +133,10 @@ create a file to specify your experiment, lets say you create a file named <exp_
 #SBATCH --error=./out/run_e%j.out
 
 # load here the modules you need, for example:
-module load GCC/10.2.0 CUDA/11.1.1 GCCcore/8.2.0 Singularity/3.4.0-Go-1.12
+module load GCC/10.2.0 CUDA/11.1.1
 
 # specify the command to run
-srun singularity run -B $HOME/scratch:/scratch $HOME/docker/<image_name>.sif \
+srun apptainer run -B $HOME/scratch:/scratch $HOME/docker/<image_name>.sif \
  bash -c "export WANDB_BASE_URL='https://api.wandb.ai'; \
  export WANDB_API_KEY='<your_key>'; \
  cd $HOME/path/to/your/code; \
