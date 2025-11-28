@@ -150,16 +150,13 @@ def main():
         )
         env_data["HPC_TOTAL_USAGE"] = sum(int(row["Used"]) for row in rows) if rows else 0
 
-
-
     except Exception as exc:
-        team_line = f"Team usage lookup failed: {exc}"
+        print(f"Team usage lookup failed: {exc}")
 
-    # Compute percentages and capacity
-    env_data["HPC_CAPACITY_YEAR"] = int(total_capacity)
-    if total_capacity > 0:
+    # Compute percentages
+    if env_data["HPC_CAPACITY_YEAR"] > 0:
         env_data["HPC_MY_PCT"] = round(
-            (env_data["HPC_MY_USAGE"] / total_capacity) * 100
+            (env_data["HPC_MY_USAGE"] / env_data["HPC_CAPACITY_YEAR"]) * 100, 2
         )
 
     # Always write env file
@@ -169,7 +166,7 @@ def main():
                 f.write(f'{key}={value}\n')
 
     if VERBOSE:
-        print("\n".join(env_lines))
+        print(env_data)
 
 
 if __name__ == "__main__":
