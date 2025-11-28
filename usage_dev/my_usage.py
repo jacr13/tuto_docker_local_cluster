@@ -30,13 +30,22 @@ def load_external_module(name: str, path: str):
     if not os.path.exists(path):
         raise FileNotFoundError(f"Module path does not exist: {path}")
 
-    spec = importlib.util.spec_from_file_location(name, path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Could not load spec for {name} from {path}")
+    def _load():
+        spec = importlib.util.spec_from_file_location(name, path)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Could not load spec for {name} from {path}")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)  # type: ignore[attr-defined]
+        return module
 
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)  # type: ignore[attr-defined]
-    return module
+    try:
+        return _load()
+    except ModuleNotFoundError as exc:
+        # If slurmpartitions is missing, inject stub and retry once.
+        if exc.name == "slurmpartitions":
+            ensure_slurmpartitions_stub()
+            return _load()
+        raise
 
 
 def ensure_pimanager_stub():
@@ -150,7 +159,6 @@ def gather_usage(
 def main():
     try:
         ensure_pimanager_stub()
-        ensure_slurmpartitions_stub()
         usage_module = load_external_module(
             "ug_slurm_usage_per_user", UG_SLURM_USAGE_PATH
         )
