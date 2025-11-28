@@ -11,6 +11,7 @@ import sys
 import types
 from datetime import datetime, timedelta
 from typing import List
+import ast
 
 UG_SLURM_USAGE_PATH = "/usr/local/bin/ug_slurm_usage_per_user.py"
 UG_NODE_SUMMARY_PATH = "/usr/local/sbin/ug_getNodeCharacteristicsSummary.py"
@@ -156,6 +157,11 @@ def main():
                     line.split("=", 1) for line in existing_lines if "=" in line
                 )
             }
+        for key, value in env_data.items():
+            try:
+                env_data[key] = ast.literal_eval(value)
+            except (ValueError, SyntaxError):
+                pass
     
     last_update_raw = env_data.get("LAST_HPC_USAGE_UPDATE")
     last_update_dt = None
@@ -183,15 +189,6 @@ def main():
                 "HPC_MAX_PCT": 100 // DMML_HPC_USERS,
                 "LAST_HPC_USAGE_UPDATE": now,
             }
-    
-    env_data["HPC_MY_USAGE"] = int(env_data["HPC_MY_USAGE"])
-    env_data["HPC_TEAM_USAGE"] = int(env_data["HPC_TEAM_USAGE"])
-    env_data["HPC_TEAM_BUDGET_YEAR"] = int(env_data["HPC_TEAM_BUDGET_YEAR"])
-    for k, v in env_data["HPC_TEAM_BUDGET_BY_CLUSTER"].items():
-        env_data["HPC_TEAM_BUDGET_BY_CLUSTER"][k] = int(v)
-    env_data["HPC_MY_PCT"] = float(env_data["HPC_MY_PCT"])
-    env_data["HPC_TEAM_PCT"] = float(env_data["HPC_TEAM_PCT"])
-    env_data["HPC_MAX_PCT"] = float(env_data["HPC_MAX_PCT"])
 
 
     # Compute percentages
