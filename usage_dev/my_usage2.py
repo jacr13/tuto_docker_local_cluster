@@ -206,17 +206,17 @@ def main():
         print(f"PI: {PI_NAME}")
         print(f"Partitions: {DEFAULT_PARTITION}")
         print()
-        print(f"{'User usage':<15} {env_data["HPC_MY_USAGE"]:>15,} {env_data["HPC_MY_PCT"]:>17.2f}%")
-        print(f"{'Team usage':<15} {env_data["HPC_TEAM_USAGE"]:>15,} {env_data["HPC_TEAM_PCT"]:>17.2f}%")
-        print(f"{'Total budget':<15} {env_data["HPC_TEAM_BUDGET_YEAR"]:>15,} {100:>17.2f}%")
+        print(f"{'User usage':<15} {env_data["HPC_MY_USAGE"]:>15_} {env_data["HPC_MY_PCT"]:>17.2f}%".replace("_", " "))
+        print(f"{'Team usage':<15} {env_data["HPC_TEAM_USAGE"]:>15_} {env_data["HPC_TEAM_PCT"]:>17.2f}%".replace("_", " "))
+        print(f"{'Total budget':<15} {env_data["HPC_TEAM_BUDGET_YEAR"]:>15_} {100:>17.2f}%".replace("_", " "))
         print()
         print(" Budget per Cluster ".center(50, "-"))
         print()
         clusters_line = f"{'':<12}"
         budget_line = f"{'Budget':<12}"
         for cluster, value in env_data.get("HPC_TEAM_BUDGET_BY_CLUSTER", {}).items():
-            clusters_line += f"{cluster:<12}"
-            budget_line += f"{value:<12}"
+            clusters_line += f"{cluster:>12}"
+            budget_line += f"{value:>12_}".replace("_", " ")
 
         print(clusters_line)
         print(budget_line)
