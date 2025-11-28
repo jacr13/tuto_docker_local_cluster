@@ -82,9 +82,13 @@ alias srj='squeue -u $USER -t RUNNING'
 
 
 function update_my_cmds() {
-    curl https://raw.githubusercontent.com/jacr13/tuto_docker_local_cluster/main/my_cluster_cmds.sh > $HOME/my_cluster_cmds.sh
-    curl https://raw.githubusercontent.com/jacr13/tuto_docker_local_cluster/main/cluster_usage_scipts/my_usage_scrip.py > $HOME/my_usage_scrip.py
-    source $HOME/.bashrc
+    wget -q https://raw.githubusercontent.com/jacr13/tuto_docker_local_cluster/main/my_cluster_cmds.sh \
+         -O "$HOME/my_cluster_cmds.sh"
+
+    wget -q https://raw.githubusercontent.com/jacr13/tuto_docker_local_cluster/main/cluster_usage_scipts/my_usage_scrip.py \
+         -O "$HOME/my_usage_scrip.py"
+
+    source "$HOME/.bashrc"
 }
 
 # squeue running count
