@@ -23,6 +23,7 @@ YEAR_START = "2025-01-01"
 YEAR_END = "2026-01-01"
 REFERENCE_YEAR = datetime.fromisoformat(YEAR_START).year
 DEFAULT_PARTITION = "private-kalousis-gpu"
+_SLURMPARTITIONS_AVAILABLE = False
 
 
 def load_external_module(name: str, path: str):
@@ -83,6 +84,7 @@ def ensure_slurmpartitions_stub():
 
     stub_mod = types.SimpleNamespace(SlurmPartition=_StubSlurmPartition)
     sys.modules["slurmpartitions"] = stub_mod
+    globals()["_SLURMPARTITIONS_AVAILABLE"] = False
 
 
 def compute_cpuh_per_year(
@@ -90,24 +92,91 @@ def compute_cpuh_per_year(
 ):
     """
     Compute cpuh_per_year using the Reporting class without invoking argparse,
-    optionally filtering by a partition list.
+    optionally filtering by a partition list. If slurmpartitions is missing,
+    fall back to manual inventory filtering.
     """
     inventory_path = f"/opt/cluster/inventory/simplified_inventory_{cluster}.yaml"
 
-    args = types.SimpleNamespace(
-        nodes=None,
-        partitions=[partition] if partition else None,
-        cluster=cluster,
-        summary=True,
-        format="pretty",
-        reference_year=datetime(reference_year, 1, 1),
-    )
+    # If slurmpartitions is present, use the full Reporting workflow.
+    if _SLURMPARTITIONS_AVAILABLE:
+        args = types.SimpleNamespace(
+            nodes=None,
+            partitions=[partition] if partition else None,
+            cluster=cluster,
+            summary=True,
+            format="pretty",
+            reference_year=datetime(reference_year, 1, 1),
+        )
+        reporting = node_summary_module.Reporting(args, inventory_path)
+        reporting.read_yaml_inventory()
+        reporting.subset_filter()
+        summary = reporting._compute()
+        return summary["cpuh_per_year"]
 
-    reporting = node_summary_module.Reporting(args, inventory_path)
-    reporting.read_yaml_inventory()
-    reporting.subset_filter()
-    summary = reporting._compute()
-    return summary["cpuh_per_year"]
+    # Fallback: manual computation with basic partition filtering from inventory.
+    yaml = node_summary_module.yaml
+    relativedelta = node_summary_module.relativedelta
+
+    with open(inventory_path, "r") as file:
+        inventory = yaml.safe_load(file)
+
+    ref_year_dt = datetime(reference_year, 1, 1)
+    usage_ratio = 0.6
+    max_year_in_production = 5
+    hours_per_year = 24 * 365
+
+    def start_production(node: dict):
+        if "leasing" in node and "start_date" in node["leasing"]:
+            return datetime.strptime(node["leasing"]["start_date"], "%Y-%m-%d")
+        return datetime.strptime(node["purchasedate"], "%Y-%m-%d")
+
+    def end_production(node: dict):
+        if "leasing" in node and "end_date" in node["leasing"]:
+            return datetime.strptime(node["leasing"]["end_date"], "%Y-%m-%d")
+        extended_months = node.get("extended_prod_in_months", 0)
+        return datetime.strptime(node["purchasedate"], "%Y-%m-%d") + relativedelta(
+            years=max_year_in_production, months=extended_months
+        )
+
+    def months_in_production_this_year(node: dict) -> int:
+        start_of_year = datetime(ref_year_dt.year, 1, 1)
+        end_of_year = datetime(ref_year_dt.year, 12, 31)
+
+        start_date = start_production(node)
+        end_date = end_production(node)
+        if end_date < start_of_year:
+            return 0
+
+        prod_start = max(start_date, start_of_year)
+        prod_end = min(end_date, end_of_year)
+        if prod_end < prod_start:
+            return 0
+
+        delta = relativedelta(prod_end, prod_start)
+        return delta.years * 12 + delta.months + (1 if delta.days > 0 else 0)
+
+    def partition_matches(node: dict, target: str | None) -> bool:
+        if target is None:
+            return True
+        # Try common keys in the inventory for partition membership.
+        parts = node.get("partitions") or node.get("partition")
+        if parts is None:
+            return False
+        if isinstance(parts, str):
+            parts_list = [p.strip() for p in parts.split(",")]
+        else:
+            parts_list = [str(p) for p in parts]
+        return target in parts_list
+
+    total_billing = 0
+    for node in inventory.values():
+        if not partition_matches(node, partition):
+            continue
+        months = months_in_production_this_year(node)
+        billing_per_year = months * int(node["billing"]) / 12
+        total_billing += billing_per_year
+
+    return hours_per_year * total_billing * usage_ratio
 
 
 def gather_usage(
@@ -157,6 +226,14 @@ def gather_usage(
 
 
 def main():
+    global _SLURMPARTITIONS_AVAILABLE
+    try:
+        import slurmpartitions as _sp  # type: ignore
+        _SLURMPARTITIONS_AVAILABLE = True
+    except ModuleNotFoundError:
+        ensure_slurmpartitions_stub()
+        _SLURMPARTITIONS_AVAILABLE = False
+
     try:
         ensure_pimanager_stub()
         usage_module = load_external_module(
