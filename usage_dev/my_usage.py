@@ -21,14 +21,14 @@ UG_SLURM_USAGE_PATH = "/usr/local/bin/ug_slurm_usage_per_user.py"
 UG_NODE_SUMMARY_PATH = "/usr/local/sbin/ug_getNodeCharacteristicsSummary.py"
 YEAR_START = "2025-01-01"
 YEAR_END = "2026-01-01"
-REFERENCE_YEAR = 2025
+REFERENCE_YEAR = datetime(datetime.today().year, 1, 1)
 KALOUSIS_PARTITION = "private-kalousis-gpu"
 
 
 class Args_NodeSummary:
     partitions: List[str]
     cluster: str
-    reference_year: str = str(REFERENCE_YEAR)
+    reference_year: datetime
     nodes: List[str] = []
 
 
@@ -93,7 +93,7 @@ def compute_cpuh_per_year(node_summary_module, cluster: str, partition: str):
     args = Args_NodeSummary()
     args.cluster = cluster
     args.partitions = [partition]
-    args.reference_year = str(REFERENCE_YEAR)
+    args.reference_year = REFERENCE_YEAR
 
     # Build a Reporting instance manually to bypass the CLI parser.
     reporting = node_summary_module.Reporting(args, inventory_path)
