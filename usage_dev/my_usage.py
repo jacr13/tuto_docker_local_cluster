@@ -19,6 +19,8 @@ from typing import Dict, List
 
 UG_SLURM_USAGE_PATH = "/usr/local/bin/ug_slurm_usage_per_user.py"
 UG_NODE_SUMMARY_PATH = "/usr/local/sbin/ug_getNodeCharacteristicsSummary.py"
+SLURMPARTITIONS_PATH = "/usr/local/sbin/slurmpartitions.py"
+
 YEAR_START = "2025-01-01"
 YEAR_END = "2026-01-01"
 REFERENCE_YEAR = datetime.fromisoformat(YEAR_START).year
@@ -85,6 +87,32 @@ def ensure_slurmpartitions_stub():
     stub_mod = types.SimpleNamespace(SlurmPartition=_StubSlurmPartition)
     sys.modules["slurmpartitions"] = stub_mod
     globals()["_SLURMPARTITIONS_AVAILABLE"] = False
+
+
+def load_slurmpartitions_module():
+    """
+    Try to import slurmpartitions; if not found, load from known paths.
+    Sets _SLURMPARTITIONS_AVAILABLE accordingly.
+    """
+    global _SLURMPARTITIONS_AVAILABLE
+    if "slurmpartitions" in sys.modules:
+        _SLURMPARTITIONS_AVAILABLE = True
+        return
+
+    candidate_paths = [SLURMPARTITIONS_PATH]
+    for path in candidate_paths:
+        if not path or not os.path.exists(path):
+            continue
+        spec = importlib.util.spec_from_file_location("slurmpartitions", path)
+        if spec and spec.loader:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)  # type: ignore[attr-defined]
+            sys.modules["slurmpartitions"] = module
+            _SLURMPARTITIONS_AVAILABLE = True
+            return
+
+    # If still not found, leave it unavailable; caller can stub if desired.
+    _SLURMPARTITIONS_AVAILABLE = False
 
 
 def compute_cpuh_per_year(
@@ -226,15 +254,10 @@ def gather_usage(
 
 
 def main():
-    global _SLURMPARTITIONS_AVAILABLE
     try:
-        import slurmpartitions as _sp  # type: ignore
-        _SLURMPARTITIONS_AVAILABLE = True
-    except ModuleNotFoundError:
-        ensure_slurmpartitions_stub()
-        _SLURMPARTITIONS_AVAILABLE = False
-
-    try:
+        load_slurmpartitions_module()
+        if not _SLURMPARTITIONS_AVAILABLE:
+            ensure_slurmpartitions_stub()
         ensure_pimanager_stub()
         usage_module = load_external_module(
             "ug_slurm_usage_per_user", UG_SLURM_USAGE_PATH
