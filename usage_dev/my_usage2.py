@@ -212,8 +212,8 @@ def main():
         print()
         print(" Budget per Cluster ".center(50, "-"))
         print()
-        clusters_line = f"{'':<12}"
-        budget_line = f"{'Budget':<12}"
+        clusters_line = f"{'':<11}"
+        budget_line = f"{'Budget':<11}"
         for cluster, value in env_data.get("HPC_TEAM_BUDGET_BY_CLUSTER", {}).items():
             clusters_line += f"{cluster:>13}"
             budget_line += f"{value:>13_}".replace("_", " ")
