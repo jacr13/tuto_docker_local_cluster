@@ -29,12 +29,41 @@ parse_git_branch() {
      git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/'
 }
 
+usage_block() {
+    local FILE="$HOME/.my_hpc_usage.env"
 
+    # Default if file missing
+    [[ ! -f "$FILE" ]] && echo "[-/-/-]" && return
+
+    # Read the env file into associative array
+    declare -A env
+    while IFS='=' read -r key value; do
+        [[ -z "$key" ]] && continue
+        env[$key]="$value"
+    done < "$FILE"
+
+    # Shortcuts
+    local my=${env[HPC_MY_USAGE]}
+    local team=${env[HPC_TEAM_USAGE]}
+    local total=${env[HPC_TEAM_BUDGET_YEAR]}
+    local mypct=${env[HPC_MY_PCT]}
+    local teampct=${env[HPC_TEAM_PCT]}
+    local maxpct=${env[HPC_MAX_PCT]}
+
+    # Safety defaults
+    my=${my:-0}
+    team=${team:-0}
+    total=${total:-0}
+    mypct=${mypct:-0}
+    teampct=${teampct:-0}
+    maxpct=${maxpct:-0}
+
+    # Print the block
+    echo "[${my}/${team}/${total} | ${mypct}%/${teampct}%/${maxpct}%]"
+}
 
 #change text before cmd
 PS1="($LIGHT_CYAN${CLUSTER}$DEFAULT)-[\$(usage_block)]-$LIGHT_GREEN\u@\h$DEFAULT:$LIGHT_BLUE\w $RED\$(parse_git_branch)$DEFAULT$ "
-
-
 
 #=========================================================
 #
@@ -54,6 +83,7 @@ alias srj='squeue -u $USER -t RUNNING'
 
 function update_my_cmds() {
     curl https://raw.githubusercontent.com/jacr13/tuto_docker_local_cluster/main/my_cluster_cmds.sh > $HOME/my_cluster_cmds.sh
+    curl https://raw.githubusercontent.com/jacr13/tuto_docker_local_cluster/main/cluster_usage_scipts/my_usage_scrip.py > $HOME/my_usage_scrip.py
     source $HOME/.bashrc
 }
 
