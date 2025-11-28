@@ -25,6 +25,13 @@ REFERENCE_YEAR = 2025
 KALOUSIS_PARTITION = "private-kalousis-gpu"
 
 
+class Args_NodeSummary:
+    partitions: List[str]
+    cluster: str
+    reference_year: int = REFERENCE_YEAR
+    nodes: List[str] = []
+
+
 def load_external_module(name: str, path: str):
     """Load a Python script by absolute path as a module."""
     if not os.path.exists(path):
@@ -83,13 +90,9 @@ def compute_cpuh_per_year(node_summary_module, cluster: str, partition: str):
     """
     inventory_path = f"/opt/cluster/inventory/simplified_inventory_{cluster}.yaml"
 
-    class Args:
-        partitions: List[str] = [partition]
-        cluster: str = cluster
-        reference_year: int = REFERENCE_YEAR
-        nodes: List[str] = []
-
-    args = Args()
+    args = Args_NodeSummary()
+    args.cluster = cluster
+    args.partitions = [partition]
 
     # Build a Reporting instance manually to bypass the CLI parser.
     reporting = node_summary_module.Reporting(args, inventory_path)
