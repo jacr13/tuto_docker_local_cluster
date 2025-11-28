@@ -21,13 +21,24 @@ YELLOW='\[\033[1;33m\]' # light yellow
 GRAY='\[\033[1;30m\]'
 LIGHT_GRAY='\[\033[0;37m\]'
 
+#=========================================================
+# change PS1
+#=========================================================
+
 parse_git_branch() {
      git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/'
 }
 
-#change text before cmd
-PS1="($LIGHT_CYAN${CLUSTER}$DEFAULT)-$LIGHT_GREEN\u@\h$DEFAULT:$LIGHT_BLUE\w $RED\$(parse_git_branch)$DEFAULT$ "
 
+
+#change text before cmd
+PS1="($LIGHT_CYAN${CLUSTER}$DEFAULT)-[\$(usage_block)]-$LIGHT_GREEN\u@\h$DEFAULT:$LIGHT_BLUE\w $RED\$(parse_git_branch)$DEFAULT$ "
+
+
+
+#=========================================================
+#
+#=========================================================
 
 alias my_report_cpu='sreport user top'
 alias my_report_percent='sreport user topusage start=2/16/22 end=2/23/24 -t percent'
