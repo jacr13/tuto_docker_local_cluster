@@ -9,7 +9,7 @@ import importlib.util
 import os
 import sys
 import types
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 
 UG_SLURM_USAGE_PATH = "/usr/local/bin/ug_slurm_usage_per_user.py"
@@ -26,6 +26,7 @@ CLUSTERS = ["baobab", "yggdrasil", "bamboo"]
 OUTPUT_ENV_PATH = os.path.join(os.path.expanduser("~"), ".my_hpc_usage.env")
 DMML_HPC_USERS = 13
 VERBOSE = True
+UPDATE_INTERVALE = 1 # minutes
 
 def load_module_from_path(name: str, path: str):
     if not os.path.exists(path):
@@ -140,37 +141,59 @@ def main():
     UserPI = usage_mod.UserPI  # type: ignore[attr-defined]
 
     user = getpass.getuser()
-    now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    now_dt = datetime.now()
+    now = now_dt.strftime("%Y-%m-%dT%H:%M:%S")
+
+    env_data = {}
 
     if os.path.exists(OUTPUT_ENV_PATH):
         with open(OUTPUT_ENV_PATH, "r", encoding="ascii") as f:
             existing_lines = f.readlines()
+
+        env_data = {
+                key.strip(): value.strip()
+                for key, value in (
+                    line.split("=", 1) for line in existing_lines if "=" in line
+                )
+            }
     
-    
-        print(existing_lines)
+    last_update_raw = env_data.get("LAST_HPC_USAGE_UPDATE")
+    last_update_dt = None
+    if last_update_raw:
+        try:
+            last_update_dt = datetime.fromisoformat(str(last_update_raw))
+        except ValueError:
+            last_update_dt = None
 
-    env_data = {
-        "HPC_MY_USAGE": get_personal_usage(UsagePerAccount, UserPI, user, now),
-        "HPC_TOTAL_USAGE": get_team_usage(UsagePerAccount, user),
-        "HPC_CAPACITY_YEAR": get_year_capacity(Reporting),
-        "HPC_MY_PCT": 0,
-        "HPC_MAX_PCT": 100 // DMML_HPC_USERS,
-        "_LAST_HPC_USAGE_UPDATE": now,
-    }
+    update_needed = (
+        not env_data
+        or last_update_dt is None
+        or (now_dt - last_update_dt) > timedelta(minutes=UPDATE_INTERVALE)
+    )
 
-
+    if update_needed:
+        capacity_total, capacity_info = get_year_capacity(Reporting)
+        env_data = {
+                "HPC_MY_USAGE": get_personal_usage(UsagePerAccount, UserPI, user, now),
+                "HPC_TOTAL_USAGE": get_team_usage(UsagePerAccount, user),
+                "HPC_CAPACITY_YEAR": capacity_total,
+                "HPC_CAPACITY_INFO": capacity_info,
+                "HPC_MY_PCT": 0,
+                "HPC_MAX_PCT": 100 // DMML_HPC_USERS,
+                "LAST_HPC_USAGE_UPDATE": now,
+            }
 
     # Compute percentages
-    if env_data["HPC_CAPACITY_YEAR"] > 0:
-        env_data["HPC_MY_PCT"] = round(
-            (env_data["HPC_MY_USAGE"] / env_data["HPC_CAPACITY_YEAR"]) * 100, 2
-        )
+    capacity_value = float(env_data.get("HPC_CAPACITY_YEAR", 1) or 1)
+    my_usage_value = float(env_data.get("HPC_MY_USAGE", 0) or 0)
+    if capacity_value > 0:
+        env_data["HPC_MY_PCT"] = round((my_usage_value / capacity_value) * 100, 2)
 
     # Always write env file
  
     with open(OUTPUT_ENV_PATH, "w", encoding="ascii") as f:
         for key, value in env_data.items():
-                f.write(f'{key}={value}\n')
+            f.write(f"{key}={value}\n")
 
     if VERBOSE:
         print(env_data)
