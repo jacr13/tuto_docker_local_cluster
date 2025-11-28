@@ -85,6 +85,7 @@ def compute_cpuh_per_year(node_summary_module, cluster: str, partition: str):
 
     args = node_summary_module.parseArgs()
     args.p = partition
+    args.c = cluster
     print(args)
 
     # Build a Reporting instance manually to bypass the CLI parser.
