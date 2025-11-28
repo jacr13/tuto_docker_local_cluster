@@ -187,7 +187,7 @@ def main():
     env_data["HPC_MY_USAGE"] = int(env_data["HPC_MY_USAGE"])
     env_data["HPC_TEAM_USAGE"] = int(env_data["HPC_TEAM_USAGE"])
     env_data["HPC_TEAM_BUDGET_YEAR"] = int(env_data["HPC_TEAM_BUDGET_YEAR"])
-    for k, v in env_data["HPC_TEAM_BUDGET_BY_CLUSTER"]:
+    for k, v in env_data["HPC_TEAM_BUDGET_BY_CLUSTER"].items():
         env_data["HPC_TEAM_BUDGET_BY_CLUSTER"][k] = int(v)
     env_data["HPC_MY_PCT"] = float(env_data["HPC_MY_PCT"])
     env_data["HPC_TEAM_PCT"] = float(env_data["HPC_TEAM_PCT"])
