@@ -16,10 +16,12 @@ UG_SLURM_USAGE_PATH = "/usr/local/bin/ug_slurm_usage_per_user.py"
 UG_NODE_SUMMARY_PATH = "/usr/local/sbin/ug_getNodeCharacteristicsSummary.py"
 SLURMPARTITIONS_PATH = "/usr/local/sbin/slurmpartitions.py"
 
-YEAR_START = "2025-01-01"
-YEAR_END = "2026-01-01"
-REFERENCE_YEAR = datetime.fromisoformat(YEAR_START).year
+REFERENCE_YEAR = datetime.today().year
+YEAR_START = f"{REFERENCE_YEAR}-01-01"
+YEAR_END = f"{REFERENCE_YEAR+1}-01-01"
+
 DEFAULT_PARTITION = "private-kalousis-gpu"
+CLUSTERS = ["baobab", "yggdrasil", "bamboo"]
 
 
 def load_module_from_path(name: str, path: str):
@@ -59,14 +61,12 @@ def main():
     Reporting = node_mod.Reporting  # type: ignore[attr-defined]
     UsagePerAccount = usage_mod.UsagePerAccount  # type: ignore[attr-defined]
     UserPI = usage_mod.UserPI  # type: ignore[attr-defined]
-    StringUtils = usage_mod.StringUtils  # type: ignore[attr-defined]
 
     user = getpass.getuser()
     now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
-    clusters = ["baobab", "yggdrasil", "bamboo"]
-    print("Cluster cpuh_per_year capacity")
-    for cluster in clusters:
+    total_hours = 0
+    for cluster in CLUSTERS:
         try:
             args = types.SimpleNamespace(
                 nodes=None,
@@ -76,17 +76,23 @@ def main():
                 format="pretty",
                 reference_year=datetime(REFERENCE_YEAR, 1, 1),
             )
-            inventory_path = f"/opt/cluster/inventory/simplified_inventory_{cluster}.yaml"
+            inventory_path = (
+                f"/opt/cluster/inventory/simplified_inventory_{cluster}.yaml"
+            )
             reporting = Reporting(args, inventory_path)
             reporting.read_yaml_inventory()
             reporting.subset_filter()
             summary = reporting._compute()
             cpuh = summary["cpuh_per_year"]
-            print(
-                f"- {cluster}: {cpuh / 1_000_000:.2f}M CPUh/year ({int(cpuh)} raw)"
-            )
+            total_hours += cpuh
         except Exception as exc:
             print(f"- {cluster}: failed to compute ({exc})")
+
+    print(
+        f"Cluster total CPU hours in {REFERENCE_YEAR} "
+        f"for partition '{DEFAULT_PARTITION}': "
+        f"{total_hours} hours"
+    )
 
     # Personal usage
     try:
@@ -111,7 +117,7 @@ def main():
         total_hours = sum(int(row["Used"]) for row in rows)
         print(
             f"\nPersonal usage since {YEAR_START} (accounts: {', '.join(pi_names)}): "
-            f"{StringUtils().format_millions(total_hours)} hours"
+            f"{total_hours} hours"
         )
     except Exception as exc:
         print(f"\nPersonal usage lookup failed: {exc}")
@@ -133,7 +139,7 @@ def main():
         total_hours = sum(int(row["Used"]) for row in rows) if rows else 0
         print(
             f"Team usage for PI 'kalousis' ({YEAR_START} to {YEAR_END}): "
-            f"{StringUtils().format_millions(total_hours)} hours"
+            f"{total_hours} hours"
         )
     except Exception as exc:
         print(f"Team usage lookup failed: {exc}")
