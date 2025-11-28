@@ -29,6 +29,19 @@ parse_git_branch() {
      git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/'
 }
 
+human_num() {
+    local n="$1"
+
+    # Under 100k → show in k (1 decimal)
+    if (( n < 100000 )); then
+        printf "%.1fk" "$(echo "$n / 1000" | bc -l)"
+        return
+    fi
+
+    # 100k or more → show in M (2 decimals)
+    printf "%.2fM" "$(echo "$n / 1000000" | bc -l)"
+}
+
 usage_block() {
     local FILE="$HOME/.my_hpc_usage.env"
 
@@ -51,15 +64,16 @@ usage_block() {
     local maxpct=${env[HPC_MAX_PCT]}
 
     # Safety defaults
-    my=${my:-0}
-    team=${team:-0}
-    total=${total:-0}
-    mypct=${mypct:-0}
-    teampct=${teampct:-0}
-    maxpct=${maxpct:-0}
+    mypct=${mypct%.*}
+    teampct=${teampct%.*}
+    maxpct=${maxpct%.*}
+    my=$(human_num "$my")
+    team=$(human_num "$team")
+    total=$(human_num "$total")
+
 
     # Print the block
-    echo "[${my}/${team}/${total} | ${mypct}%/${teampct}%/${maxpct}%]"
+    echo "[${my}/${team}/${total} | ${mypct}/${maxpct}/${teampct}%]"
 }
 
 #change text before cmd
