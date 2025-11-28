@@ -85,8 +85,8 @@ function update_my_cmds() {
     wget -q https://raw.githubusercontent.com/jacr13/tuto_docker_local_cluster/main/my_cluster_cmds.sh \
          -O "$HOME/my_cluster_cmds.sh"
 
-    wget -q https://raw.githubusercontent.com/jacr13/tuto_docker_local_cluster/main/cluster_usage_scipts/my_usage_scrip.py \
-         -O "$HOME/my_usage_scrip.py"
+    wget -q https://raw.githubusercontent.com/jacr13/tuto_docker_local_cluster/main/cluster_usage_scipts/my_usage_script.py \
+         -O "$HOME/my_usage_script.py"
 
     source "$HOME/.bashrc"
 }
