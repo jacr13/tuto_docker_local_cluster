@@ -22,7 +22,9 @@ YEAR_END = f"{REFERENCE_YEAR+1}-01-01"
 
 DEFAULT_PARTITION = "private-kalousis-gpu"
 CLUSTERS = ["baobab", "yggdrasil", "bamboo"]
-
+OUTPUT_ENV_PATH = os.path.join(os.path.expanduser("~"), ".my_hpc_usage.env")
+DMML_HPC_USERS = 13
+VERBOSE = True
 
 def load_module_from_path(name: str, path: str):
     if not os.path.exists(path):
@@ -65,7 +67,22 @@ def main():
     user = getpass.getuser()
     now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
-    total_hours = 0
+    with open(OUTPUT_ENV_PATH, "r", encoding="ascii") as f:
+        existing_lines = f.readlines()
+    
+    print(existing_lines)
+
+
+    env_data = {
+        "HPC_MY_USAGE": 0,
+        "HPC_TOTAL_USAGE": 0,
+        "HPC_CAPACITY_YEAR": 0,
+        "HPC_MY_PCT": 0,
+        "HPC_MAX_PCT": 100 // DMML_HPC_USERS,
+        "_LAST_HPC_USAGE_UPDATE": now,
+    }
+
+    # Capacity per cluster
     for cluster in CLUSTERS:
         try:
             args = types.SimpleNamespace(
@@ -84,15 +101,11 @@ def main():
             reporting.subset_filter()
             summary = reporting._compute()
             cpuh = summary["cpuh_per_year"]
-            total_hours += cpuh
+            env_data["HPC_CAPACITY_YEAR"] += int(cpuh)
         except Exception as exc:
             print(f"- {cluster}: failed to compute ({exc})")
 
-    print(
-        f"Cluster total CPU hours in {REFERENCE_YEAR} "
-        f"for partition '{DEFAULT_PARTITION}': "
-        f"{total_hours} hours"
-    )
+
 
     # Personal usage
     try:
@@ -114,13 +127,10 @@ def main():
             )
             if data:
                 rows.extend(data)
-        total_hours = sum(int(row["Used"]) for row in rows)
-        print(
-            f"\nPersonal usage since {YEAR_START} (accounts: {', '.join(pi_names)}): "
-            f"{total_hours} hours"
-        )
+        env_data["HPC_MY_USAGE"] = sum(int(row["Used"]) for row in rows)
+
     except Exception as exc:
-        print(f"\nPersonal usage lookup failed: {exc}")
+        print(f"\nPersonal usage lookup failed: {exc}"
 
     # Team usage for PI kalousis
     try:
@@ -136,13 +146,28 @@ def main():
             all_users=True,
             report_type="user",
         )
-        total_hours = sum(int(row["Used"]) for row in rows) if rows else 0
-        print(
-            f"Team usage for PI 'kalousis' ({YEAR_START} to {YEAR_END}): "
-            f"{total_hours} hours"
-        )
+        env_data["HPC_TOTAL_USAGE"] = sum(int(row["Used"]) for row in rows) if rows else 0
+
+
+
     except Exception as exc:
-        print(f"Team usage lookup failed: {exc}")
+        team_line = f"Team usage lookup failed: {exc}"
+
+    # Compute percentages and capacity
+    env_data["HPC_CAPACITY_YEAR"] = int(total_capacity)
+    if total_capacity > 0:
+        env_data["HPC_MY_PCT"] = round(
+            (env_data["HPC_MY_USAGE"] / total_capacity) * 100
+        )
+
+    # Always write env file
+ 
+    with open(OUTPUT_ENV_PATH, "w", encoding="ascii") as f:
+        for key, value in env_data.items():
+                f.write(f'{key}={value}\n')
+
+    if VERBOSE:
+        print("\n".join(env_lines))
 
 
 if __name__ == "__main__":
