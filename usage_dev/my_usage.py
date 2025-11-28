@@ -28,7 +28,7 @@ KALOUSIS_PARTITION = "private-kalousis-gpu"
 class Args_NodeSummary:
     partitions: List[str]
     cluster: str
-    reference_year: int = REFERENCE_YEAR
+    reference_year: str = str(REFERENCE_YEAR)
     nodes: List[str] = []
 
 
@@ -93,6 +93,7 @@ def compute_cpuh_per_year(node_summary_module, cluster: str, partition: str):
     args = Args_NodeSummary()
     args.cluster = cluster
     args.partitions = [partition]
+    args.reference_year = str(REFERENCE_YEAR)
 
     # Build a Reporting instance manually to bypass the CLI parser.
     reporting = node_summary_module.Reporting(args, inventory_path)
