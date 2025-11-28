@@ -99,7 +99,9 @@ def compute_cpuh_per_year(node_summary_module, cluster: str, partition: str):
     reporting.read_yaml_inventory()
     reporting.subset_filter()
     reporting.parse_nodes()
+    reporting.pretty_print()
     summary = reporting._compute()
+    print(summary)
     return summary["cpuh_per_year"]
 
 
