@@ -26,7 +26,7 @@ CLUSTERS = ["baobab", "yggdrasil", "bamboo"]
 OUTPUT_ENV_PATH = os.path.join(os.path.expanduser("~"), ".my_hpc_usage.env")
 DMML_HPC_USERS = 13
 VERBOSE = True
-UPDATE_INTERVALE = 24 * 60 # minutes
+UPDATE_INTERVALE = 1 # minutes
 
 def load_module_from_path(name: str, path: str):
     if not os.path.exists(path):
@@ -175,19 +175,22 @@ def main():
         capacity_total, capacity_info = get_year_capacity(Reporting)
         env_data = {
                 "HPC_MY_USAGE": get_personal_usage(UsagePerAccount, UserPI, user, now),
-                "HPC_TOTAL_USAGE": get_team_usage(UsagePerAccount, user),
-                "HPC_CAPACITY_YEAR": capacity_total,
-                "HPC_CAPACITY_INFO": capacity_info,
+                "HPC_TEAM_USAGE": get_team_usage(UsagePerAccount, user),
+                "HPC_TEAM_BUDGET_YEAR": capacity_total,
+                "HPC_TEAM_BUDGET_BY_CLUSTER": capacity_info,
                 "HPC_MY_PCT": 0,
+                "HPC_TEAM_PCT": 0,
                 "HPC_MAX_PCT": 100 // DMML_HPC_USERS,
                 "LAST_HPC_USAGE_UPDATE": now,
             }
 
     # Compute percentages
-    capacity_value = float(env_data.get("HPC_CAPACITY_YEAR", 1) or 1)
+    capacity_value = float(env_data.get("HPC_TEAM_BUDGET_YEAR", 1) or 1)
     my_usage_value = float(env_data.get("HPC_MY_USAGE", 0) or 0)
+    team_usage_value = float(env_data.get("HPC_TEAM_USAGE", 0) or 0)
     if capacity_value > 0:
         env_data["HPC_MY_PCT"] = round((my_usage_value / capacity_value) * 100, 2)
+        env_data["HPC_TEAM_PCT"] = round((team_usage_value / capacity_value) * 100, 2)
 
     # Always write env file
  
@@ -196,7 +199,19 @@ def main():
             f.write(f"{key}={value}\n")
 
     if VERBOSE:
-        print(env_data)
+        print("===== HPC Usage Report =====")
+        print()
+        print(f"User: {user} in PI: {PI_NAME}, partitions: {DEFAULT_PARTITION}")
+        print()
+        print(f"{'User usage':<15} {env_data["HPC_MY_USAGE"]:>15,} {env_data["HPC_MY_PCT"]:>17.2f}%")
+        print(f"{'Team usage':<15} {env_data["HPC_TEAM_USAGE"]:>15,} {env_data["HPC_TEAM_PCT"]:>17.2f}%")
+        print(f"{'Total budget':<15} {env_data["HPC_TEAM_BUDGET_YEAR"]:>15,} {100:>17.2f}%")
+
+        print("---- Budget per Cluster  ----")
+        for cluster, value in env_data.get("HPC_TEAM_BUDGET_BY_CLUSTER", {}).items():
+            print(f"  {cluster}: {value:,}")
+
+        print("============================")
 
 
 if __name__ == "__main__":
