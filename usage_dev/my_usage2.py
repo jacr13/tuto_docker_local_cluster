@@ -67,10 +67,12 @@ def main():
     user = getpass.getuser()
     now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
-    with open(OUTPUT_ENV_PATH, "r", encoding="ascii") as f:
-        existing_lines = f.readlines()
+    if os.path.exists(OUTPUT_ENV_PATH):
+        with open(OUTPUT_ENV_PATH, "r", encoding="ascii") as f:
+            existing_lines = f.readlines()
     
-    print(existing_lines)
+    
+        print(existing_lines)
 
 
     env_data = {
@@ -130,7 +132,7 @@ def main():
         env_data["HPC_MY_USAGE"] = sum(int(row["Used"]) for row in rows)
 
     except Exception as exc:
-        print(f"\nPersonal usage lookup failed: {exc}"
+        print(f"\nPersonal usage lookup failed: {exc}")
 
     # Team usage for PI kalousis
     try:
