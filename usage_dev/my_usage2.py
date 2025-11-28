@@ -199,21 +199,29 @@ def main():
             f.write(f"{key}={value}\n")
 
     if VERBOSE:
-        print("HPC Usage Report".center(49, "="))
+        print()
+        print(" HPC Usage Report ".center(50, "="))
         print()
         print(f"User: {user}")
-        print("PI: {PI_NAME}")
-        print("Partitions: {DEFAULT_PARTITION}")
+        print(f"PI: {PI_NAME}")
+        print(f"Partitions: {DEFAULT_PARTITION}")
         print()
         print(f"{'User usage':<15} {env_data["HPC_MY_USAGE"]:>15,} {env_data["HPC_MY_PCT"]:>17.2f}%")
         print(f"{'Team usage':<15} {env_data["HPC_TEAM_USAGE"]:>15,} {env_data["HPC_TEAM_PCT"]:>17.2f}%")
         print(f"{'Total budget':<15} {env_data["HPC_TEAM_BUDGET_YEAR"]:>15,} {100:>17.2f}%")
         print()
-        print("Budget per Cluster".center(49, "="))
+        print(" Budget per Cluster ".center(50, "-"))
+        print()
+        clusters_line = f"{'':<12}"
+        budget_line = f"{'Budget':<12}"
         for cluster, value in env_data.get("HPC_TEAM_BUDGET_BY_CLUSTER", {}).items():
-            print(f"  {cluster}: {value:,}")
+            clusters_line += f"{cluster:<12}"
+            budget_line += f"{value:<12}"
 
-        print("=" * 49)
+        print(clusters_line)
+        print(budget_line)
+        print()
+        print("=" * 50)
 
 
 if __name__ == "__main__":
