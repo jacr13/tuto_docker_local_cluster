@@ -199,19 +199,21 @@ def main():
             f.write(f"{key}={value}\n")
 
     if VERBOSE:
-        print("===== HPC Usage Report =====")
+        print("HPC Usage Report".center(49, "="))
         print()
-        print(f"User: {user} in PI: {PI_NAME}, partitions: {DEFAULT_PARTITION}")
+        print(f"User: {user}")
+        print("PI: {PI_NAME}")
+        print("Partitions: {DEFAULT_PARTITION}")
         print()
         print(f"{'User usage':<15} {env_data["HPC_MY_USAGE"]:>15,} {env_data["HPC_MY_PCT"]:>17.2f}%")
         print(f"{'Team usage':<15} {env_data["HPC_TEAM_USAGE"]:>15,} {env_data["HPC_TEAM_PCT"]:>17.2f}%")
         print(f"{'Total budget':<15} {env_data["HPC_TEAM_BUDGET_YEAR"]:>15,} {100:>17.2f}%")
-
-        print("---- Budget per Cluster  ----")
+        print()
+        print("Budget per Cluster".center(49, "="))
         for cluster, value in env_data.get("HPC_TEAM_BUDGET_BY_CLUSTER", {}).items():
             print(f"  {cluster}: {value:,}")
 
-        print("============================")
+        print("=" * 49)
 
 
 if __name__ == "__main__":
