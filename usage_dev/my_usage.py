@@ -21,15 +21,8 @@ UG_SLURM_USAGE_PATH = "/usr/local/bin/ug_slurm_usage_per_user.py"
 UG_NODE_SUMMARY_PATH = "/usr/local/sbin/ug_getNodeCharacteristicsSummary.py"
 YEAR_START = "2025-01-01"
 YEAR_END = "2026-01-01"
-REFERENCE_YEAR = datetime(datetime.today().year, 1, 1)
-KALOUSIS_PARTITION = "private-kalousis-gpu"
-
-
-class Args_NodeSummary:
-    partitions: List[str]
-    cluster: str
-    reference_year: datetime
-    nodes: List[str] | None = None
+REFERENCE_YEAR = datetime.fromisoformat(YEAR_START).year
+DEFAULT_PARTITION = "private-kalousis-gpu"
 
 
 def load_external_module(name: str, path: str):
@@ -83,32 +76,28 @@ def ensure_slurmpartitions_stub():
     sys.modules["slurmpartitions"] = stub_mod
 
 
-def compute_cpuh_per_year(node_summary_module, cluster: str, partition: str):
+def compute_cpuh_per_year(
+    node_summary_module, cluster: str, partition: str | None, reference_year: int
+):
     """
-    Compute cpuh_per_year for a cluster by reusing Reporting from the
-    ug_getNodeCharacteristicsSummary script, but without relying on CLI args.
+    Compute cpuh_per_year using the Reporting class without invoking argparse,
+    optionally filtering by a partition list.
     """
     inventory_path = f"/opt/cluster/inventory/simplified_inventory_{cluster}.yaml"
 
-    args = Args_NodeSummary()
-    args.cluster = cluster
-    args.partitions = [partition]
-    args.reference_year = REFERENCE_YEAR
+    args = types.SimpleNamespace(
+        nodes=None,
+        partitions=[partition] if partition else None,
+        cluster=cluster,
+        summary=True,
+        format="pretty",
+        reference_year=datetime(reference_year, 1, 1),
+    )
 
-    # Build a Reporting instance manually to bypass the CLI parser.
     reporting = node_summary_module.Reporting(args, inventory_path)
-    print(reporting._nodes)
-    print(reporting._partitions)
-    print(reporting._reference_year)
-    print(reporting._inventory_path)
-    print(reporting._cluster)
     reporting.read_yaml_inventory()
     reporting.subset_filter()
-    reporting.parse_nodes()
-    reporting.pretty_print()
     summary = reporting._compute()
-    print(summary)
-    stop
     return summary["cpuh_per_year"]
 
 
@@ -180,9 +169,15 @@ def main():
     for cluster in clusters:
         try:
             cpuh_per_year = compute_cpuh_per_year(
-                node_summary_module, cluster, partition=KALOUSIS_PARTITION
+                node_summary_module,
+                cluster,
+                partition=DEFAULT_PARTITION,
+                reference_year=REFERENCE_YEAR,
             )
-            print(f"- {cluster}: {cpuh_per_year} CPUh/year ")
+            print(
+                f"- {cluster}: {cpuh_per_year / 1_000_000:.2f}M CPUh/year "
+                f"({int(cpuh_per_year)} raw)"
+            )
         except Exception as exc:
             print(f"- {cluster}: failed to compute ({exc})")
 
