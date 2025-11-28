@@ -29,7 +29,7 @@ class Args_NodeSummary:
     partitions: List[str]
     cluster: str
     reference_year: datetime
-    nodes: List[str] = []
+    nodes: List[str] | None = None
 
 
 def load_external_module(name: str, path: str):
@@ -98,12 +98,17 @@ def compute_cpuh_per_year(node_summary_module, cluster: str, partition: str):
     # Build a Reporting instance manually to bypass the CLI parser.
     reporting = node_summary_module.Reporting(args, inventory_path)
     print(reporting._nodes)
+    print(reporting._partitions)
+    print(reporting._reference_year)
+    print(reporting._inventory_path)
+    print(reporting._cluster)
     reporting.read_yaml_inventory()
     reporting.subset_filter()
     reporting.parse_nodes()
     reporting.pretty_print()
     summary = reporting._compute()
     print(summary)
+    stop
     return summary["cpuh_per_year"]
 
 
