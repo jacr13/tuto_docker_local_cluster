@@ -73,11 +73,11 @@ usage_block() {
 
 
     # Print the block
-    echo "[${my}/${team}/${total} | ${mypct}/${maxpct}/${teampct}%]"
+    echo "${my}/${team}/${total} | ${mypct}/${maxpct}/${teampct}%"
 }
 
 #change text before cmd
-PS1="($LIGHT_CYAN${CLUSTER}$DEFAULT)-[\$(usage_block)]-$LIGHT_GREEN\u@\h$DEFAULT:$LIGHT_BLUE\w $RED\$(parse_git_branch)$DEFAULT$ "
+PS1="($LIGHT_CYAN${CLUSTER}$DEFAULT)-[$LIGHT_PURPLE\$(usage_block)$DEFAULT]-$LIGHT_GREEN\u@\h$DEFAULT:$LIGHT_BLUE\w $RED\$(parse_git_branch)$DEFAULT$ "
 
 #=========================================================
 #
