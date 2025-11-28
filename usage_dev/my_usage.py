@@ -83,10 +83,7 @@ def compute_cpuh_per_year(node_summary_module, cluster: str, partition: str):
     """
     inventory_path = f"/opt/cluster/inventory/simplified_inventory_{cluster}.yaml"
 
-    args = node_summary_module.parseArgs()
-    print("Original args:", args)
-    args.p = partition
-    args.c = cluster
+    args = node_summary_module.parseArgs(["-c", cluster, "-p", partition])
     print(args)
 
     # Build a Reporting instance manually to bypass the CLI parser.
