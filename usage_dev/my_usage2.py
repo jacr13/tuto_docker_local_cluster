@@ -26,7 +26,7 @@ CLUSTERS = ["baobab", "yggdrasil", "bamboo"]
 OUTPUT_ENV_PATH = os.path.join(os.path.expanduser("~"), ".my_hpc_usage.env")
 DMML_HPC_USERS = 13
 VERBOSE = True
-UPDATE_INTERVALE = 1 # minutes
+UPDATE_INTERVALE = 24 * 60 # minutes
 
 def load_module_from_path(name: str, path: str):
     if not os.path.exists(path):
