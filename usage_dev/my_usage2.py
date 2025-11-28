@@ -20,6 +20,7 @@ REFERENCE_YEAR = datetime.today().year
 YEAR_START = f"{REFERENCE_YEAR}-01-01"
 YEAR_END = f"{REFERENCE_YEAR+1}-01-01"
 
+PI_NAME = "kalousis"
 DEFAULT_PARTITION = "private-kalousis-gpu"
 CLUSTERS = ["baobab", "yggdrasil", "bamboo"]
 OUTPUT_ENV_PATH = os.path.join(os.path.expanduser("~"), ".my_hpc_usage.env")
@@ -47,6 +48,80 @@ def ensure_pimanager_stub():
 
     sys.modules["pimanager"] = types.SimpleNamespace(PIManager=_StubPIManager)
 
+def get_year_capacity(Reporting):
+    # Capacity per cluster
+    total = 0
+    info = {}
+    for cluster in CLUSTERS:
+        try:
+            args = types.SimpleNamespace(
+                nodes=None,
+                partitions=[DEFAULT_PARTITION],
+                cluster=cluster,
+                summary=True,
+                format="pretty",
+                reference_year=datetime(REFERENCE_YEAR, 1, 1),
+            )
+            inventory_path = (
+                f"/opt/cluster/inventory/simplified_inventory_{cluster}.yaml"
+            )
+            reporting = Reporting(args, inventory_path)
+            reporting.read_yaml_inventory()
+            reporting.subset_filter()
+            summary = reporting._compute()
+            cpuh = summary["cpuh_per_year"]
+            total += int(cpuh)
+            info[cluster] = int(cpuh)
+        except Exception as exc:
+            print(f"- {cluster}: failed to compute ({exc})")
+    return total, info
+
+def get_personal_usage(UsagePerAccount, UserPI, user, now):
+    # Personal usage
+    try:
+        usage = UsagePerAccount()
+        user_pi = UserPI()
+        pi_names: List[str] = user_pi.get_pis_from_user(user, False)
+        rows = []
+        for pi_name in pi_names:
+            data = usage.get_user_usage_by_account(
+                user=user,
+                cluster=None,
+                pi_name=pi_name,
+                start=YEAR_START,
+                end=now,
+                verbose=False,
+                time_format="Hours",
+                all_users=False,
+                report_type="user",
+            )
+            if data:
+                rows.extend(data)
+        return sum(int(row["Used"]) for row in rows)
+    except Exception as exc:
+        print(f"\nPersonal usage lookup failed: {exc}")
+    return 0
+
+def get_team_usage(UsagePerAccount, user):
+    # Team usage for PI kalousis
+    try:
+        usage = UsagePerAccount()
+        rows = usage.get_user_usage_by_account(
+            user=user,
+            cluster=None,
+            pi_name=PI_NAME,
+            start=YEAR_START,
+            end=YEAR_END,
+            verbose=False,
+            time_format="Hours",
+            all_users=True,
+            report_type="user",
+        )
+        return sum(int(row["Used"]) for row in rows) if rows else 0
+
+    except Exception as exc:
+        print(f"Team usage lookup failed: {exc}")
+    return 0
 
 def main():
     ensure_pimanager_stub()
@@ -74,84 +149,16 @@ def main():
     
         print(existing_lines)
 
-
     env_data = {
-        "HPC_MY_USAGE": 0,
-        "HPC_TOTAL_USAGE": 0,
-        "HPC_CAPACITY_YEAR": 0,
+        "HPC_MY_USAGE": get_personal_usage(UsagePerAccount, UserPI, user, now),
+        "HPC_TOTAL_USAGE": get_team_usage(UsagePerAccount, user),
+        "HPC_CAPACITY_YEAR": get_year_capacity(Reporting),
         "HPC_MY_PCT": 0,
         "HPC_MAX_PCT": 100 // DMML_HPC_USERS,
         "_LAST_HPC_USAGE_UPDATE": now,
     }
 
-    # Capacity per cluster
-    for cluster in CLUSTERS:
-        try:
-            args = types.SimpleNamespace(
-                nodes=None,
-                partitions=[DEFAULT_PARTITION],
-                cluster=cluster,
-                summary=True,
-                format="pretty",
-                reference_year=datetime(REFERENCE_YEAR, 1, 1),
-            )
-            inventory_path = (
-                f"/opt/cluster/inventory/simplified_inventory_{cluster}.yaml"
-            )
-            reporting = Reporting(args, inventory_path)
-            reporting.read_yaml_inventory()
-            reporting.subset_filter()
-            summary = reporting._compute()
-            cpuh = summary["cpuh_per_year"]
-            env_data["HPC_CAPACITY_YEAR"] += int(cpuh)
-        except Exception as exc:
-            print(f"- {cluster}: failed to compute ({exc})")
 
-
-
-    # Personal usage
-    try:
-        usage = UsagePerAccount()
-        user_pi = UserPI()
-        pi_names: List[str] = user_pi.get_pis_from_user(user, False)
-        rows = []
-        for pi_name in pi_names:
-            data = usage.get_user_usage_by_account(
-                user=user,
-                cluster=None,
-                pi_name=pi_name,
-                start=YEAR_START,
-                end=now,
-                verbose=False,
-                time_format="Hours",
-                all_users=False,
-                report_type="user",
-            )
-            if data:
-                rows.extend(data)
-        env_data["HPC_MY_USAGE"] = sum(int(row["Used"]) for row in rows)
-
-    except Exception as exc:
-        print(f"\nPersonal usage lookup failed: {exc}")
-
-    # Team usage for PI kalousis
-    try:
-        usage = UsagePerAccount()
-        rows = usage.get_user_usage_by_account(
-            user=user,
-            cluster=None,
-            pi_name="kalousis",
-            start=YEAR_START,
-            end=YEAR_END,
-            verbose=False,
-            time_format="Hours",
-            all_users=True,
-            report_type="user",
-        )
-        env_data["HPC_TOTAL_USAGE"] = sum(int(row["Used"]) for row in rows) if rows else 0
-
-    except Exception as exc:
-        print(f"Team usage lookup failed: {exc}")
 
     # Compute percentages
     if env_data["HPC_CAPACITY_YEAR"] > 0:
