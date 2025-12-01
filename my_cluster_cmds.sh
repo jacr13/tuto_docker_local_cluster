@@ -73,7 +73,7 @@ usage_block() {
 
 
     # Print the block
-    echo "${my}/${team}/${total} | ${mypct}/${maxpct}/${teampct}%"
+    echo "${my}/${team}/${total}"
 }
 
 #change text before cmd
