@@ -21,7 +21,7 @@ CLUSTERS = ["baobab", "yggdrasil", "bamboo"]
 OUTPUT_ENV_PATH = os.path.join(os.path.expanduser("~"), ".my_hpc_usage.env")
 DMML_HPC_USERS = 13
 VERBOSE = True
-UPDATE_INTERVALE = 24 * 60  # minutes
+UPDATE_INTERVALE = 0.1  # minutes
 
 
 def run_cmd(cmd):
