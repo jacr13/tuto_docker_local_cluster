@@ -34,11 +34,11 @@ def run_cmd(cmd):
 
 def get_year_capacity():
     # Capacity per cluster
-    total = 2.67e6
+    total = int(2.67e6)
     info = {
-        "baobab": 1.0e6,
-        "yggdrasil": 1.0e6,
-        "bamboo": 0.67e6,
+        "baobab": int(1.0e6),
+        "yggdrasil": int(1.0e6),
+        "bamboo": int(0.67e6),
     }
     return total, info
 
