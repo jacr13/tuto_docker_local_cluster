@@ -6,10 +6,11 @@ import os
 import subprocess
 from datetime import datetime, timedelta
 
-UG_SLURM_PARSE_ARGS_PATH = "/usr/local/bin/ug_slurm_parse_args.py"
-UG_SLURM_USAGE_PATH = "/usr/local/bin/ug_slurm_usage_per_user.py"
-UG_NODE_SUMMARY_PATH = "/usr/local/sbin/ug_getNodeCharacteristicsSummary.py"
-SLURMPARTITIONS_PATH = "/usr/local/sbin/slurmpartitions.py"
+# paths to external scripts just for reference
+# UG_SLURM_PARSE_ARGS_PATH = "/usr/local/bin/ug_slurm_parse_args.py"
+# UG_SLURM_USAGE_PATH = "/usr/local/bin/ug_slurm_usage_per_user.py"
+# UG_NODE_SUMMARY_PATH = "/usr/local/sbin/ug_getNodeCharacteristicsSummary.py"
+# SLURMPARTITIONS_PATH = "/usr/local/sbin/slurmpartitions.py"
 
 REFERENCE_YEAR = datetime.today().year
 YEAR_START = f"{REFERENCE_YEAR}-01-01"
