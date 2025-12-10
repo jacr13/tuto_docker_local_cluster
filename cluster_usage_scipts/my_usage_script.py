@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import ast
 import getpass
 import os
 import subprocess
@@ -33,7 +34,7 @@ def run_cmd(cmd):
 
 def get_year_capacity():
     # Capacity per cluster
-    total = 0
+    total = 2.67e6
     info = {}
     return total, info
 
@@ -105,12 +106,100 @@ def main():
 
     env_data = {}
 
-    team_total, user_total, info = get_team_and_personal_usage(user)
+    if os.path.exists(OUTPUT_ENV_PATH):
+        with open(OUTPUT_ENV_PATH, "r", encoding="ascii") as f:
+            existing_lines = f.readlines()
 
-    print(f"User: {user}")
-    print(f"Team total usage (hours): {team_total}")
-    print(f"User total usage (hours): {user_total}")
-    print(f"Usage details by cluster and user: {info}")
+        env_data = {
+            key.strip(): value.strip()
+            for key, value in (
+                line.split("=", 1) for line in existing_lines if "=" in line
+            )
+        }
+        for key, value in env_data.items():
+            try:
+                env_data[key] = ast.literal_eval(value)
+            except (ValueError, SyntaxError):
+                pass
+
+    last_update_raw = env_data.get("LAST_HPC_USAGE_UPDATE")
+    last_update_dt = None
+    if last_update_raw:
+        try:
+            last_update_dt = datetime.fromisoformat(str(last_update_raw))
+        except ValueError:
+            last_update_dt = None
+
+    update_needed = (
+        not env_data
+        or last_update_dt is None
+        or (now_dt - last_update_dt) > timedelta(minutes=UPDATE_INTERVALE)
+    )
+
+    if update_needed:
+        capacity_total, capacity_info = get_year_capacity()
+        team_usage, my_usage, usage_info = get_team_and_personal_usage(user)
+        env_data = {
+            "HPC_MY_USAGE": my_usage,
+            "HPC_TEAM_USAGE": team_usage,
+            "HPC_TEAM_BUDGET_YEAR": capacity_total,
+            "HPC_TEAM_BUDGET_BY_CLUSTER": capacity_info,
+            "HPC_MY_PCT": 0,
+            "HPC_TEAM_PCT": 0,
+            "HPC_MAX_PCT": 100 // DMML_HPC_USERS,
+            "LAST_HPC_USAGE_UPDATE": now,
+        }
+
+    # Compute percentages
+    capacity_value = float(env_data.get("HPC_TEAM_BUDGET_YEAR", 1) or 1)
+    my_usage_value = float(env_data.get("HPC_MY_USAGE", 0) or 0)
+    team_usage_value = float(env_data.get("HPC_TEAM_USAGE", 0) or 0)
+    if capacity_value > 0:
+        env_data["HPC_MY_PCT"] = round((my_usage_value / capacity_value) * 100, 2)
+        env_data["HPC_TEAM_PCT"] = round((team_usage_value / capacity_value) * 100, 2)
+
+    # Always write env file
+
+    with open(OUTPUT_ENV_PATH, "w", encoding="ascii") as f:
+        for key, value in env_data.items():
+            f.write(f"{key}={value}\n")
+
+    if VERBOSE:
+        print()
+        print(" HPC Usage Report ".center(50, "="))
+        print()
+        print(f"User: {user}")
+        print(f"PI: {PI_NAME}")
+        print(f"Partitions: {DEFAULT_PARTITION}")
+        print()
+        print(
+            f"{'User usage':<15} {env_data["HPC_MY_USAGE"]:>15_} {env_data["HPC_MY_PCT"]:>17.2f}%".replace(
+                "_", " "
+            )
+        )
+        print(
+            f"{'Team usage':<15} {env_data["HPC_TEAM_USAGE"]:>15_} {env_data["HPC_TEAM_PCT"]:>17.2f}%".replace(
+                "_", " "
+            )
+        )
+        print(
+            f"{'Total budget':<15} {env_data["HPC_TEAM_BUDGET_YEAR"]:>15_} {100:>17.2f}%".replace(
+                "_", " "
+            )
+        )
+        print()
+        print(" Budget per Cluster ".center(50, "-"))
+        print()
+        clusters_line = f"{'':<11}"
+        budget_line = f"{'Budget':<11}"
+        for cluster, value in env_data.get("HPC_TEAM_BUDGET_BY_CLUSTER", {}).items():
+            clusters_line += f"{cluster:>13}"
+            budget_line += f"{value:>13_}".replace("_", " ")
+
+        print(clusters_line)
+        print(budget_line)
+        print()
+        print("=" * 50)
 
 
 if __name__ == "__main__":
