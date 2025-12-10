@@ -6,10 +6,13 @@ try:
     import getpass
     import subprocess
     import sys
+    from collections import defaultdict
     from datetime import datetime
     from io import StringIO
+    from pathlib import Path
 
     from tabulate2 import tabulate
+    from ug_slurm_parse_args import ArgumentParser
 except ModuleNotFoundError as e:
     print(f"Missing module {e}")
     print(
@@ -77,25 +80,6 @@ class UserPI:
             return None
 
 
-class Report:
-    def __init__(self, cluster, login, proper, account, tresname, used):
-        self.report = []
-        self.cluster = cluster
-        self.login = login
-        self.proper = proper
-        self.account = account
-        self.tresname = tresname
-        self.used = used
-
-    def __repr__(self):
-        report["cluster"] = self.cluster
-        cluster["login"] = self.login
-        cluster["proper"] = self.proper
-        cluster["account"] = self.account
-        cluster["tresname"] = self.tresname
-        return cluster
-
-
 class StringUtils:
     def format_millions(self, value):
         return f"{value / 1_000_000:.2f}M"
@@ -109,16 +93,61 @@ class UsagePerAccount:
     def getHeader(self):
         return self.header
 
-    def parseSreport(self):
+    def parseSreport(self, all_users, aggregate):
         f = StringIO(self.output)
         lines = f.readlines()
 
         # first 4 lines are header. We store them for future use
         self.header = lines[0:4]
 
-        # we skip the first four lines
-        csv_reader = csv.DictReader(lines[4:], delimiter="|")
-        return list(csv_reader)
+        # cleanup empty lines and skip header
+        data_lines = [line.strip() for line in lines[4:] if line.strip()]
+
+        # we parse the data
+        csv_reader = csv.DictReader(data_lines, delimiter="|")
+
+        # if we display all users we skip account only line (PI)
+        if all_users:
+            # On ne garde que les lignes où 'Login' est renseigné (→ utilisateurs)
+            rows = [row for row in csv_reader if row.get("Login", "").strip() != ""]
+            if aggregate:
+                rows = self.aggregate_by_user(rows)
+        else:
+            # On renvoie tout tel quel
+            rows = list(csv_reader)
+        return rows
+
+    def _to_float(self, x: str) -> float:
+        """Convertit 'Used' en float (gère espaces, virgules, milliers)."""
+        if not x:
+            return 0.0
+        s = str(x).strip().replace("\u00a0", " ").replace(" ", "")
+        if s == "":
+            return 0.0
+        if "," in s and "." in s:
+            s = s.replace(",", "")
+        elif "," in s and "." not in s:
+            s = s.replace(",", ".")
+        try:
+            return float(s)
+        except ValueError:
+            return 0.0
+
+    def aggregate_by_user(self, reader):
+        """
+        Agrège la consommation 'billing' par utilisateur (Login),
+        """
+        totals = defaultdict(float)
+        for row in reader:
+            login = (row.get("Login") or "").strip()
+            if not login:  # ignore ligne agrégat account
+                continue
+            used = self._to_float(row.get("Used", "0"))
+            totals[login] += used
+
+        result = [{"Login": u, "Used": round(v, 2)} for u, v in totals.items()]
+        result.sort(key=lambda x: x["Used"], reverse=True)
+        return result
 
     def get_user_usage_by_account(
         self,
@@ -130,6 +159,7 @@ class UsagePerAccount:
         verbose,
         time_format,
         all_users,
+        aggregate,
         report_type,
     ):
         sreport_format = "Cluster,Login%15,Proper%20,Account,TresName,Used"
@@ -169,65 +199,43 @@ class UsagePerAccount:
                 print("Executing command:", " ".join(cmd))
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
             self.output = result.stdout
-            return self.parseSreport()
+            return self.parseSreport(all_users, aggregate)
         except subprocess.CalledProcessError as e:
             print(f"Error: {e}")
             print(f"stderr: {e.stderr}")
 
 
-def parseArgs(first_day_of_month, current_time):
-    parser = argparse.ArgumentParser(
-        description="Retrieve HPC utilization statistics for a user or group of users."
-    )
-    parser.add_argument("--user", help="Username to retrieve usage for.")
-    parser.add_argument(
-        "--start",
-        default=first_day_of_month,
-        help="Start date (default: first of month).",
-    )
-    parser.add_argument("--end", default=current_time, help="End date (default: now).")
-    parser.add_argument("--pi", help="Specify a PI manually.")
-    parser.add_argument(
-        "--group", help="Specify a group name to get all PIs belonging to it."
-    )
-    parser.add_argument(
-        "--cluster",
-        choices=["baobab", "yggdrasil", "bamboo"],
-        help="Cluster name (default: all clusters).",
-    )
-    parser.add_argument(
-        "--all_users",
-        action="store_true",
-        help="Include all users under the PI account.",
-    )
-    parser.add_argument(
-        "--report_type",
-        choices=["user", "account"],
-        default="user",
-        help="Type of report: user (default) or account.",
-    )
-    parser.add_argument(
-        "--time_format",
-        choices=["Hours", "Minutes", "Seconds"],
-        default="Hours",
-        help="Time format: Hours (default), Minutes, or Seconds.",
-    )
-    parser.add_argument("--verbose", action="store_true", help="Verbose output.")
-    return parser.parse_args()
+def printDetailedUsage(usage, res, verbose):
+    string_utils = StringUtils()
+
+    # print header (multiline)
+    for i in usage.getHeader():
+        print(i)
+    # print cluster usage
+    print(tabulate(res, headers="keys"))
+
+    if not verbose:
+        total_usage = 0
+        for i in res:
+            total_usage += int(i["Used"])
+        print(f"Total usage: {string_utils.format_millions(total_usage)}")
+
+
+def getSumUsage(res):
+    total_usage = 0
+    for i in res:
+        total_usage += int(i["Used"])
+    return total_usage
 
 
 def main():
     # Default to the first day of the current month if no start date is provided
-    first_day_of_month = datetime.now().replace(day=1).strftime("%Y-%m-%dT00:00:00")
-    current_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-    args = parseArgs(first_day_of_month, current_time)
+    args = ArgumentParser().parse()
 
     user = args.user or getpass.getuser()
-    if not user or user == "root":
+    if not user or user == "root" and args.report_type != "account":
         print("Error: could not determine user or running as root.")
         return
-
-    string_utils = StringUtils()
 
     userpi = UserPI()
     clusters = args.cluster
@@ -255,30 +263,57 @@ def main():
     res = []
     for pi_name in pi_names:
         usage_by_account = usage.get_user_usage_by_account(
-            user,
-            clusters,
-            pi_name,
-            args.start,
-            args.end,
-            args.verbose,
-            args.time_format,
-            args.all_users,
-            args.report_type,
+            user=user,
+            cluster=clusters,
+            pi_name=pi_name,
+            start=args.start,
+            end=args.end,
+            verbose=args.verbose,
+            time_format=args.time_format,
+            all_users=args.all_users,
+            report_type=args.report_type,
+            aggregate=args.aggregate,
         )
         for i in usage_by_account:
             res.append(i)
 
-    # print header (multiline)
-    for i in usage.getHeader():
-        print(i)
-    # print cluster usage
-    print(tabulate(res, headers="keys"))
+    if args.invoice:
+        from hpc_invoice import HPCInvoice
 
-    if not args.verbose:
-        total_usage = 0
-        for i in res:
-            total_usage += int(i["Used"])
-        print(f"Total usage: {string_utils.format_millions(total_usage)}")
+        invoice = HPCInvoice()
+        result = invoice.process(
+            pi_name=pi_name,
+            pi_gecos=args.pi_gecos,
+            pi_email=args.pi_email,
+            start_date=args.start,
+            res=res,
+            get_sum_usage=getSumUsage,
+            invoice_seq="001",
+            csv_output=bool(args.csv_output),
+            pdf_output=bool(args.pdf_output),
+        )
+
+        if args.csv_output and "csv_line" in result:
+            print(result["csv_line"])
+
+        if result["status"] == "skip_invoice":
+            print(f"No hours consumed this year, skipping invoice for {pi_name}")
+
+        if args.pdf_output and "pdf_path" in result:
+            print(f"PDF generated: {result['pdf_path']}")
+
+        # result_html= md_to_email.convert_markdown_to_html(result_md)
+
+        if args.send_email:
+            # md_to_email.send_email(result_md, f"[HPC] Baobab invoice {invoice_ref} 2025", mail_from, mail_to, mail_cc)
+            print(f"Email sent to {mail_to}")
+            return
+        # else:
+        #  print(result_html)
+        #  return
+
+    else:
+        printDetailedUsage(usage, res, args.verbose)
 
 
 if __name__ == "__main__":
