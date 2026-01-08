@@ -57,9 +57,9 @@ def get_team_and_personal_usage(user):
         "kalousis",
         "--all-users",
         "--start",
-        "2025-01-01",
+        YEAR_START,
         "--end",
-        "2026-01-01",
+        YEAR_END,
     ]
 
     output = run_cmd(cmd)
