@@ -188,6 +188,7 @@ def main():
             "HPC_TEAM_USAGE": team_usage,
             "HPC_TEAM_BUDGET_YEAR": capacity_total,
             "HPC_TEAM_BUDGET_BY_CLUSTER": capacity_info,
+            "HPC_USERS_INFO": users_info,
             "HPC_TEAM_BUDGET_YEAR_REPORTED": capacity_total_reported,
             "HPC_MY_PCT": 0,
             "HPC_TEAM_PCT": 0,
@@ -211,34 +212,34 @@ def main():
 
     if VERBOSE:
         print()
-        print(" HPC Usage Report ".center(50, "="))
+        print(" HPC Usage Report ".center(60, "="))
         print()
         print(f"User: {user}")
         print(f"PI: {PI_NAME}")
         print(f"Partitions: {DEFAULT_PARTITION}")
         print()
         print(
-            f"{'User usage':<15} {env_data["HPC_MY_USAGE"]:>15_} {env_data["HPC_MY_PCT"]:>17.2f}%".replace(
+            f"{'User usage':<25} {env_data["HPC_MY_USAGE"]:>15_} {env_data["HPC_MY_PCT"]:>17.2f}%".replace(
                 "_", " "
             )
         )
         print(
-            f"{'Team usage':<15} {env_data["HPC_TEAM_USAGE"]:>15_} {env_data["HPC_TEAM_PCT"]:>17.2f}%".replace(
+            f"{'Team usage':<25} {env_data["HPC_TEAM_USAGE"]:>15_} {env_data["HPC_TEAM_PCT"]:>17.2f}%".replace(
                 "_", " "
             )
         )
         print(
-            f"{'Total budget':<15} {env_data["HPC_TEAM_BUDGET_YEAR"]:>15_} {100:>17.2f}%".replace(
+            f"{'Total budget':<25} {env_data["HPC_TEAM_BUDGET_YEAR"]:>15_} {100:>17.2f}%".replace(
                 "_", " "
             )
         )
         print(
-            f"{'(Total budget rep)':<15} {env_data["HPC_TEAM_BUDGET_YEAR_REPORTED"]:>15_} {100:>17.2f}%".replace(
+            f"{'(Total budget rep)':<25} {env_data["HPC_TEAM_BUDGET_YEAR_REPORTED"]:>15_} {100:>17.2f}%".replace(
                 "_", " "
             )
         )
         print()
-        print(" Budget per Cluster ".center(50, "-"))
+        print(" Budget per Cluster ".center(60, "-"))
         print()
         clusters_line = f"{'':<11}"
         budget_line = f"{'Budget':<11}"
@@ -249,18 +250,36 @@ def main():
         print(clusters_line)
         print(budget_line)
         print()
-        print(" Usage per User ".center(50, "-"))
+        print(" Usage per User ".center(60, "-"))
         print()
-        print(f"{'':<11}" + "".join(f"{cluster:>13}" for cluster in CLUSTERS))
 
-        for user, usage_info in users_info.items():
-            usage_line = f"{user:<11}"
+        print(
+            f"{'':<12}" + "".join(f"{cluster:>12}" for cluster in CLUSTERS + ["Total"])
+        )
+
+        users_info = env_data.get("HPC_USERS_INFO", {})
+
+        # Sort users by total usage (descending)
+        sorted_users = sorted(
+            users_info.items(),
+            key=lambda item: sum(item[1].get(c, 0) for c in CLUSTERS),
+            reverse=True,
+        )
+
+        for user, usage_info in sorted_users:
+            usage_line = f"{user:<12}"
+
             for cluster in CLUSTERS:
                 used = usage_info.get(cluster, 0)
-                usage_line += f"{used:>13_}".replace("_", " ")
+                usage_line += f"{used:>12_}".replace("_", " ")
+
+            total = sum(usage_info.get(c, 0) for c in CLUSTERS)
+            usage_line += f"{total:>12_}".replace("_", " ")
+
             print(usage_line)
+
         print()
-        print("=" * 50)
+        print("=" * 60)
 
 
 if __name__ == "__main__":
