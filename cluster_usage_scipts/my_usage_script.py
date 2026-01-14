@@ -3,6 +3,7 @@
 import ast
 import getpass
 import os
+import re
 import subprocess
 from datetime import datetime, timedelta
 
@@ -29,19 +30,50 @@ def run_cmd(cmd):
     """
     Run any command and return stdout as a string.
     """
-    result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+    cmd_str = " ".join(cmd)
+    result = subprocess.run(
+        cmd_str,
+        shell=True,
+        check=True,
+        capture_output=True,
+        text=True,
+        executable="/bin/bash",
+    )
     return result.stdout
 
 
 def get_year_capacity():
-    # Capacity per cluster
-    total = int(2.67e6)
-    info = {
-        "baobab": int(1.0e6),
-        "yggdrasil": int(1.0e6),
-        "bamboo": int(0.67e6),
-    }
-    return total, info
+    cmd = [
+        "ug_getNodeCharacteristicsSummary.py",
+        "--summary",
+        "-p",
+        "private-kalousis-gpu",
+        "-c",
+    ]
+
+    total_cpuhours = 0
+    info = {}
+
+    for cluster in CLUSTERS:
+        cluster_cmd = cmd + [cluster]
+        output = run_cmd(cluster_cmd)
+
+        match = re.search(r"CPUhours per year:\s*([\d.]+)M", output)
+        if match:
+            info[cluster] = int(float(match.group(1)) * 1_000_000)
+        else:
+            info[cluster] = 0
+        total_cpuhours += info[cluster]
+
+    # Extract reported total from summary (optional consistency check)
+    output = run_cmd(cmd + ["{baobab,yggdrasil,bamboo}"])
+    summary_match = re.search(r"CPUhours per year:\s*([\d.]+)M", output)
+    if summary_match:
+        reported_total = int(float(summary_match.group(1)) * 1_000_000)
+    else:
+        reported_total = None
+
+    return total_cpuhours, info, reported_total
 
 
 def get_team_and_personal_usage(user):
@@ -50,6 +82,7 @@ def get_team_and_personal_usage(user):
         team_usage: total usage across all users
         user_usage: usage for the given user login
         info: dict[cluster][login] -> used_hours
+        users: dict[login][cluster] -> used_hours
     """
     cmd = [
         "ug_slurm_usage_per_user.py",
@@ -64,7 +97,8 @@ def get_team_and_personal_usage(user):
 
     output = run_cmd(cmd)
 
-    info = {}
+    info = {}  # cluster -> login -> usage
+    users = {}  # login -> cluster -> usage
 
     for line in output.splitlines():
         line = line.strip()
@@ -92,16 +126,21 @@ def get_team_and_personal_usage(user):
         except ValueError:
             continue
 
-        cluster_dict = info.setdefault(cluster, {})
-        cluster_dict[login] = cluster_dict.get(login, 0) + used
+        # cluster -> user
+        info.setdefault(cluster, {})
+        info[cluster][login] = info[cluster].get(login, 0) + used
+
+        # user -> cluster
+        users.setdefault(login, {})
+        users[login][cluster] = users[login].get(cluster, 0) + used
 
     team_total = sum(
         used for cluster_dict in info.values() for used in cluster_dict.values()
     )
 
-    user_total = sum(info[c].get(user, 0) for c in info)
+    user_total = sum(users.get(user, {}).values())
 
-    return team_total, user_total, info
+    return team_total, user_total, info, users
 
 
 def main():
@@ -142,13 +181,14 @@ def main():
     )
 
     if update_needed:
-        capacity_total, capacity_info = get_year_capacity()
-        team_usage, my_usage, usage_info = get_team_and_personal_usage(user)
+        capacity_total, capacity_info, capacity_total_reported = get_year_capacity()
+        team_usage, my_usage, usage_info, users_info = get_team_and_personal_usage(user)
         env_data = {
             "HPC_MY_USAGE": my_usage,
             "HPC_TEAM_USAGE": team_usage,
             "HPC_TEAM_BUDGET_YEAR": capacity_total,
             "HPC_TEAM_BUDGET_BY_CLUSTER": capacity_info,
+            "HPC_TEAM_BUDGET_YEAR_REPORTED": capacity_total_reported,
             "HPC_MY_PCT": 0,
             "HPC_TEAM_PCT": 0,
             "HPC_MAX_PCT": 100 // DMML_HPC_USERS,
@@ -192,6 +232,11 @@ def main():
                 "_", " "
             )
         )
+        print(
+            f"{'(Total budget rep)':<15} {env_data["HPC_TEAM_BUDGET_YEAR_REPORTED"]:>15_} {100:>17.2f}%".replace(
+                "_", " "
+            )
+        )
         print()
         print(" Budget per Cluster ".center(50, "-"))
         print()
@@ -203,6 +248,17 @@ def main():
 
         print(clusters_line)
         print(budget_line)
+        print()
+        print(" Usage per User ".center(50, "-"))
+        print()
+        print(f"{'':<11}" + "".join(f"{cluster:>13}" for cluster in CLUSTERS))
+
+        for user, usage_info in users_info.items():
+            usage_line = f"{user:<11}"
+            for cluster in CLUSTERS:
+                used = usage_info.get(cluster, 0)
+                usage_line += f"{used:>13_}".replace("_", " ")
+            print(usage_line)
         print()
         print("=" * 50)
 
