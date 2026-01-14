@@ -66,12 +66,15 @@ def get_year_capacity():
         total_cpuhours += info[cluster]
 
     # Extract reported total from summary (optional consistency check)
-    output = run_cmd(cmd + ["{baobab,yggdrasil,bamboo}"])
-    summary_match = re.search(r"CPUhours per year:\s*([\d.]+)M", output)
-    if summary_match:
-        reported_total = int(float(summary_match.group(1)) * 1_000_000)
-    else:
-        reported_total = None
+    try:
+        output = run_cmd(cmd + ["{baobab,yggdrasil,bamboo}"])
+        summary_match = re.search(r"CPUhours per year:\s*([\d.]+)M", output)
+        if summary_match:
+            reported_total = int(float(summary_match.group(1)) * 1_000_000)
+        else:
+            reported_total = 0
+    except subprocess.CalledProcessError:
+        reported_total = 0
 
     return total_cpuhours, info, reported_total
 
